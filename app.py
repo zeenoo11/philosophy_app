@@ -4,6 +4,7 @@ from src.analysis_ui import display_analysis_results
 from src.styles import apply_custom_styles
 from src.config import PAGE_TITLE, PAGE_ICON, LAYOUT
 from src.tools import load_questions # Questions loader
+from src.icons import USER_ICON, BOT_ICON
 
 # 페이지 설정 (반드시 최상단에 위치)
 st.set_page_config(page_title=PAGE_TITLE, page_icon=PAGE_ICON, layout=LAYOUT)
@@ -95,10 +96,14 @@ def show_analysis_dialog():
 st.markdown(f'<p class="main-title" style="margin-bottom: 0;">{PAGE_ICON} {PAGE_TITLE}</p>', unsafe_allow_html=True)
 st.caption("나를 찾아 떠나는 철학 대화")
 
+# 탐색 시작 가능 여부 확인 (사용자 메시지가 1개 이상 있어야 함)
+has_user_messages = any(m["role"] == "user" for m in st.session_state.messages)
+
 # 버튼 및 비용 표시
 col_btn, col_info = st.columns([1, 1], vertical_alignment="center")
+
 with col_btn:
-    if st.button("탐색 시작", use_container_width=True):
+    if st.button("탐색 시작", use_container_width=True, disabled=not has_user_messages):
         show_analysis_dialog()
 
 with col_info:
@@ -139,7 +144,8 @@ def scroll_to_bottom():
 def display_chat_messages():
     for message in st.session_state.messages:
         role = message["role"]
-        with st.chat_message(role):
+        avatar = USER_ICON if role == "user" else BOT_ICON
+        with st.chat_message(role, avatar=avatar):
             st.markdown(message["content"])
 
 display_chat_messages()
@@ -150,11 +156,11 @@ if prompt := st.chat_input("당신의 생각을 들려주세요..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
     # 2. 즉시 UI 반영
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=USER_ICON):
         st.markdown(prompt)
 
     # 3. AI 분석 및 응답 생성
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=BOT_ICON):
         with st.spinner("사색 중..."):
             
             # (A) 사용자 답변 실시간 점수 분석
