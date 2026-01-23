@@ -11,29 +11,7 @@ st.set_page_config(page_title=PAGE_TITLE, page_icon=PAGE_ICON, layout=LAYOUT)
 # 커스텀 스타일 적용
 apply_custom_styles()
 
-def scroll_to_bottom():
-    """JavaScript를 사용하여 페이지 최하단으로 스크롤합니다."""
-    # 약간의 지연을 주어 DOM이 렌더링된 후 스크롤되도록 함
-    js = """
-    <script>
-        function scroll() {
-            window.scrollTo({
-                top: document.body.scrollHeight, 
-                behavior: 'smooth'
-            });
-        }
-        // MutationObserver로 채팅 컨테이너 변화 감지 시 스크롤
-        const observer = new MutationObserver(scroll);
-        const config = { childList: true, subtree: true };
-        const target = window.parent.document.body; // Streamlit iframe 외부 body 감지 시도 (제한적일 수 있음)
-        
-        // 간단하게는 0.1초 후 강제 스크롤
-        setTimeout(scroll, 100);
-        setTimeout(scroll, 300);
-        setTimeout(scroll, 500);
-    </script>
-    """
-    st.components.v1.html(js, height=0)
+
 
 
 # 질문 리스트 로드 (Session State에 캐싱 권장)
@@ -66,9 +44,7 @@ if "messages" not in st.session_state:
         if first_question:
             greeting = f"""안녕하세요! 당신의 철학적 가치관을 함께 탐색해볼까요?
 
-**{first_question['question']}**
-
-*{first_question['context']}*"""
+**{first_question['question']}**"""
             st.session_state.messages.append({"role": "assistant", "content": greeting})
             # 첫 질문의 축 설정
             st.session_state.current_axis = first_question.get('axis')
@@ -133,16 +109,42 @@ st.divider()
 # 소개 문구
 st.caption("당신의 생각, 고민, 가치관을 자유롭게 들려주세요. 대화가 어느 정도 진행되면 상단의 '탐색 시작' 버튼을 눌러보세요.")
 
-# 채팅 메시지 표시 (Fragment) - 메시지 렌더링만 독립적으로 수행
+# ... (imports)
+
+# ... (previous code)
+
+def scroll_to_bottom():
+    """JavaScript를 사용하여 페이지 최하단으로 스크롤합니다."""
+    js = """
+    <script>
+        function forceScroll() {
+            const body = window.parent.document.querySelector(".main");
+            if (body) {
+                body.scrollTop = body.scrollHeight;
+            }
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+        // 반복 호출로 로딩 지연 대응
+        setTimeout(forceScroll, 100);
+        setTimeout(forceScroll, 500);
+        setTimeout(forceScroll, 1000);
+    </script>
+    """
+    st.components.v1.html(js, height=0)
+
+# ...
+
+# 채팅 메시지 표시 (Fragment)
 @st.fragment
 def display_chat_messages():
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        role = message["role"]
+        with st.chat_message(role):
             st.markdown(message["content"])
 
 display_chat_messages()
 
-# 채팅 입력창 (Fragment 외부, 최하단 고정 보장)
+# 채팅 입력창
 if prompt := st.chat_input("당신의 생각을 들려주세요..."):
     # 1. 사용자 메시지 저장
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -155,7 +157,7 @@ if prompt := st.chat_input("당신의 생각을 들려주세요..."):
     with st.chat_message("assistant"):
         with st.spinner("사색 중..."):
             
-            # (A) 사용자 답변 실시간 점수 분석 (현재 축 기준)
+            # (A) 사용자 답변 실시간 점수 분석
             current_axis = st.session_state.current_axis
             if current_axis:
                 turn_score, turn_cost = analyze_turn(prompt, current_axis)
@@ -165,7 +167,6 @@ if prompt := st.chat_input("당신의 생각을 들려주세요..."):
                     print(f"Turn Analyzed: Axis={current_axis}, Score={turn_score}")
 
             # (B) 다음 대화 생성
-            # LLM에게 JSON 응답 요청
             response_data, chat_cost = get_chat_response(st.session_state.messages)
             st.session_state.total_cost += chat_cost
             
@@ -176,19 +177,19 @@ if prompt := st.chat_input("당신의 생각을 들려주세요..."):
             if next_qid:
                 next_q = st.session_state.question_map.get(next_qid)
                 if next_q:
-                    reply_text += f"\n\n**{next_q['question']}**\n\n*{next_q['context']}*"
-                    st.session_state.current_axis = next_q.get('axis') # 다음 턴을 위해 축 업데이트
+                    # Context 제거, Question만 표시
+                    reply_text += f"\n\n**{next_q['question']}**"
+                    st.session_state.current_axis = next_q.get('axis')
                 else:
                     st.session_state.current_axis = None
             else:
-                # 질문이 없으면(대화 종료 등) 축도 해제
                 st.session_state.current_axis = None
-
+            
             # (D) 응답 표시 및 저장
             st.markdown(reply_text)
             st.session_state.messages.append({"role": "assistant", "content": reply_text})
             
-    # 전체 리런 (비용 업데이트 및 상태 동기화)
+    # 전체 리런
     st.rerun()
 
 # 페이지 하단으로 자동 스크롤

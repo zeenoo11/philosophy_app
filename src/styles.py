@@ -37,15 +37,15 @@ def apply_custom_styles():
         }
         
         /* 모바일 채팅 입력창 렉 완화 (하단 고정 관련 안정성 확보) */
-        /* footer {visibility: hidden;} */
+        footer {visibility: hidden;}
         .stChatInputContainer {
-            padding-bottom: 1rem;
+            padding-bottom: 0.2rem;
         }
         
         /* 전체 컨테이너 여백 및 넘침 방지 */
         .block-container {
             padding-top: 2rem;
-            padding-bottom: 5rem;
+            padding-bottom: 4rem;
             overflow-x: hidden;
         }
 
