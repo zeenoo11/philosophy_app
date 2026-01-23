@@ -8,6 +8,7 @@ from src.config import PHILO_CSV_PATH
 def load_philosophy_data(csv_path: str = PHILO_CSV_PATH) -> List[Dict[str, Any]]:
     """
     CSV 파일에서 사상 데이터를 한 번만 읽어와 캐싱합니다.
+    7축 점수(0-10)와 키워드 데이터를 로드합니다.
     """
     data = []
     try:
@@ -20,9 +21,15 @@ def load_philosophy_data(csv_path: str = PHILO_CSV_PATH) -> List[Dict[str, Any]]
                         float(row['agency']),
                         float(row['logic']),
                         float(row['focus']),
-                        float(row['outlook'])
+                        float(row['outlook']),
+                        float(row['time']),
+                        float(row['meta']),
+                        float(row['social'])
                     ],
-                    'summary': row['summary']
+                    'summary': row['summary'],
+                    'core_keywords': row.get('core_keywords', ''),
+                    'positive_keywords': row.get('positive_keywords', ''),
+                    'negative_keywords': row.get('negative_keywords', '')
                 })
     except FileNotFoundError:
         print(f"Error: {csv_path} not found.")

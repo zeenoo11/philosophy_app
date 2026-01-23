@@ -46,6 +46,8 @@ def get_philosophical_questions() -> str:
     """
     questions = load_questions()
     if questions:
+        # 질문 순서를 랜덤으로 섞어서 LLM에 편향을 줄임
+        random.shuffle(questions)
         return json.dumps(questions, ensure_ascii=False, indent=2)
     return "Error: No questions available."
 
