@@ -19,6 +19,7 @@ import os
 import chainlit as cl
 
 import fusion
+import mdutil
 import reports_store
 from engine import narrator, store
 from philosophy import store as philo_store
@@ -115,12 +116,14 @@ async def on_fusion_report(action: cl.Action):
                      f"哲 {facts['philo']['top_philosophers'][0].get('label')} 외 "
                      f"{len(facts['philo']['top_philosophers']) - 1}명")
     prompt = fusion.build_fusion_prompt(facts)
+    summary = fusion.fusion_summary_table(facts)  # 결정론 요약 표 — LLM 비관여
     footer = fusion.fusion_footer(facts)
+    head = f"# {fusion.FUSION_TITLE}\n\n{summary}\n\n"
     meta: dict = {}
     if narrator.supports_streaming():
         msg = cl.Message(content="")
         await msg.send()
-        await msg.stream_token(f"# {fusion.FUSION_TITLE}\n\n_✍️ 두 렌즈를 겹쳐 읽는 중…_\n\n")
+        await msg.stream_token(head + "_✍️ 두 렌즈를 겹쳐 읽는 중…_\n\n")
 
         async def _on_token(tok: str):
             await msg.stream_token(tok.replace("~", "∼"))
@@ -132,7 +135,7 @@ async def on_fusion_report(action: cl.Action):
             await msg.remove()
             await cl.Message(content=f"⚠️ 통합 리포트 생성 실패: {e}").send()
             return
-        msg.content = f"# {fusion.FUSION_TITLE}\n\n" + body.replace("~", "∼") + footer
+        msg.content = mdutil.clean_md(head + body) + footer
         await msg.update()
     else:
         async with cl.Step(name="✍️ 통합 리포트 작성 중…", type="llm") as st:
@@ -145,12 +148,13 @@ async def on_fusion_report(action: cl.Action):
             body = (data.get("result") or "").strip()
             meta = narrator.llm_meta(data, wall)
             st.output = f"{meta.get('models')} · {meta.get('duration_ms')}ms"
-        await cl.Message(content=f"# {fusion.FUSION_TITLE}\n\n"
-                                 + body.replace("~", "∼") + footer).send()
-    reports_store.save_fusion_report(user, title=fusion.FUSION_TITLE, body=body + footer)
-    await cl.Message(content="💾 저장했어요 — **`/me` 개인 보고서 페이지**에서 지금까지의 "
+        await cl.Message(content=mdutil.clean_md(head + body) + footer).send()
+    reports_store.save_fusion_report(
+        user, title=fusion.FUSION_TITLE,
+        body=mdutil.clean_md(f"{summary}\n\n{body}") + footer)
+    await cl.Message(content="💾 저장했어요 — [📖 내 기록 (/me)](/me) 에서 지금까지의 "
                              "모든 탐색(사주·철학·통합)을 언제든 다시 볼 수 있어요. "
-                             "(로그인 계정과 같은 아이디/비밀번호)").send()
+                             "(채팅과 같은 아이디/비밀번호)").send()
 
 
 # 로그인(선택) — CHAINLIT_AUTH_SECRET 가 설정된 경우에만 활성화한다.

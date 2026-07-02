@@ -16,6 +16,7 @@ import threading
 import chainlit as cl
 from chainlit.input_widget import Slider, Switch
 
+import mdutil
 import reports_store
 from engine import narrator
 from philosophy import store as philo_store
@@ -60,8 +61,8 @@ def _username() -> str | None:
 
 
 def _clean_md(text: str) -> str:
-    """단일 물결표(GFM 취소선 오작동) 방지 — 사주 서비스와 동일 규칙."""
-    return text.replace("~", "∼") if text else text
+    """마크다운 정리 — 플랫폼 공용 규약(mdutil: 물결표·굵게 정규화)."""
+    return mdutil.clean_md(text)
 
 
 def _actions() -> list[cl.Action]:
@@ -94,7 +95,7 @@ async def start():
             top = saved["top_philosophers"][0]
             greeting += (f"\n\n> 👋 다시 오셨어요, **{user}**님! 지난 진단에서 당신과 가장 "
                          f"가까운 철학자는 **{top.get('label')}** 였어요. 새 생각을 들려주세요. "
-                         "*(진단은 자동 저장 — `/me` 개인 보고서에서 다시 볼 수 있어요)*")
+                         "*(진단은 자동 저장 — [📖 내 기록 (/me)](/me) 에서 다시 볼 수 있어요)*")
     await cl.Message(content=greeting).send()
 
 

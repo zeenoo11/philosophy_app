@@ -24,6 +24,7 @@ from datetime import datetime
 import chainlit as cl
 from chainlit.input_widget import Select, Switch
 
+import mdutil
 import reports_store
 from engine import narrator, store
 from engine.interpret import interpret
@@ -268,21 +269,8 @@ def _menu_tail() -> str:
 
 
 def _clean_md(text: str) -> str:
-    """Chainlit 마크다운 렌더 오류 방지.
-
-    - 단일 물결표(~)는 GFM에서 취소선으로 해석되어 '다음 ~까지 줄이 그어지는' 문제 →
-      틸드형 문자(∼)로 치환(범위 표기는 그대로 보임).
-    - 굵게(**) 정규화: 안쪽 공백 제거(** x ** → **x**), 홀수 개면 dangling 제거
-      (짝이 안 맞으면 ** 가 그대로 노출되는 문제 방지).
-    """
-    if not text:
-        return text
-    text = text.replace("~", "∼")
-    text = re.sub(r"\*\*[ \t]*([^*\n]+?)[ \t]*\*\*", r"**\1**", text)
-    if text.count("**") % 2 == 1:
-        i = text.rfind("**")
-        text = text[:i] + text[i + 2:]
-    return text
+    """Chainlit 마크다운 렌더 오류 방지 — 플랫폼 공용 규약(mdutil)에 위임."""
+    return mdutil.clean_md(text)
 
 
 async def _send(content: str, actions: list | None = None):
@@ -465,7 +453,7 @@ async def start():
             if prof["gender"]:
                 cl.user_session.set("gender", prof["gender"])
             await _send(f"👋 다시 오셨어요, **{user}**님! 저장해둔 사주를 불러왔어요. "
-                        "*(모든 리포트는 자동 저장 — `/me` 개인 보고서에서 다시 볼 수 있어요)*")
+                        "*(모든 리포트는 자동 저장 — [📖 내 기록 (/me)](/me) 에서 다시 볼 수 있어요)*")
             await _show_for_birth(prof["birth"])
             return
         await _send(f"👋 **{user}**님 환영해요! 생년월일시를 알려주시면 저장해둘게요.\n\n" + WELCOME)

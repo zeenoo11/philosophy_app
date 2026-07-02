@@ -30,6 +30,10 @@
   .hint{font-size:.78rem;color:var(--mist)}
   .hint b{color:var(--paper);font-weight:500}
   .hint .v{color:var(--vermilion)} .hint .a{color:var(--aegean)}
+  .right{display:flex;align-items:center;gap:16px}
+  .me-btn{border:1px solid var(--vermilion);border-radius:2px;padding:5px 14px;
+          font-size:.8rem;color:var(--paper);white-space:nowrap;transition:background .2s}
+  .me-btn:hover{background:var(--vermilion)}
   @media(max-width:680px){.hint{display:none}}
 
   main{height:calc(100% - var(--nav-h));position:relative}
@@ -54,7 +58,10 @@
 
 <nav>
   <span class="brand"><a href="/">哲<em>命</em></a><a class="back" href="/">← 소개로 돌아가기</a></span>
-  <span class="hint">좌측 상단 프로필에서 <b><span class="v">🔮 사주 운세</span> / <span class="a">🧭 철학 탐구</span></b> 를 전환할 수 있어요</span>
+  <span class="right">
+    <span class="hint">좌측 상단 프로필에서 <b><span class="v">🔮 사주 운세</span> / <span class="a">🧭 철학 탐구</span></b> 를 전환할 수 있어요</span>
+    <a class="me-btn" href="/me" title="저장된 사주·철학·통합 리포트 다시 보기 (채팅과 같은 계정)">📖 내 기록</a>
+  </span>
 </nav>
 
 <main>
