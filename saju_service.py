@@ -24,6 +24,7 @@ from datetime import datetime
 import chainlit as cl
 from chainlit.input_widget import Select, Switch
 
+import reports_store
 from engine import narrator, store
 from engine.interpret import interpret
 from engine.lunar import lunar_to_solar
@@ -199,7 +200,19 @@ def _menu_actions() -> list[cl.Action]:
     acts.append(cl.Action(name="show_presets", payload={},
                           label="🧭 해석 방식 바꾸기",
                           tooltip="표준·현대·전통 중 선택 (전문가용 7종도 가능)"))
+    if _username():  # 플랫폼 기능 — 철학 진단과 묶은 통합 리포트(콜백은 app.py)
+        acts.append(cl.Action(name="fusion_report", payload={},
+                              label="🔗 사주×철학 통합 리포트",
+                              tooltip="두 렌즈(사주·철학 진단)를 한 장의 보고서로"))
     return acts
+
+
+def _save_report(kind: str, rep) -> None:
+    """로그인 사용자의 리포트를 히스토리에 저장 — /me 개인 보고서에서 재확인."""
+    user = _username()
+    if user:
+        reports_store.save_saju_report(user, kind=kind, title=rep.title,
+                                       body=rep.text, preset_id=_preset())
 
 
 # ── 해석 방식(프리셋) 선택 ───────────────────────────────────────────────
@@ -288,8 +301,11 @@ def _gender() -> str | None:
 
 
 def _username() -> str | None:
-    """로그인된 사용자 id(익명이면 None) — 인증 비활성 시 항상 None."""
-    u = cl.user_session.get("user")
+    """로그인된 사용자 id(익명이면 None) — 인증 비활성/세션 컨텍스트 밖이면 None."""
+    try:
+        u = cl.user_session.get("user")
+    except Exception:  # noqa: BLE001 — Chainlit 컨텍스트 밖(테스트 등)
+        return None
     return getattr(u, "identifier", None) if u else None
 
 
@@ -374,6 +390,7 @@ async def _run_and_send(kind: str, birth: BirthInput, **kw):
         step.output = _meta_line(rep.meta, rep.grounded)
     tail = "" if rep.grounded else f"\n\n> ⚠️ 검토필요: {', '.join(rep.violations)}"
     await _send(f"# {rep.title}\n\n{rep.text}{tail}")
+    _save_report(kind, rep)
     await _send("🔎 다른 운세도 볼까요?" + _menu_tail(), actions=_menu_actions())
 
 
@@ -429,6 +446,7 @@ async def _stream_and_send(kind: str, label: str, birth: BirthInput, **kw):
     tail = "" if rep.grounded else f"\n\n> ⚠️ 검토필요: {', '.join(rep.violations)}"
     msg.content = _clean_md(f"# {rep.title}\n\n{rep.text}") + tail
     await msg.update()
+    _save_report(kind, rep)
     async with cl.Step(name="ℹ️ 생성 정보 (모델·시간·비용)", type="llm") as mstep:
         mstep.output = _meta_line(meta, rep.grounded)
     await _send("🔎 다른 운세도 볼까요?" + _menu_tail(), actions=_menu_actions())
@@ -446,7 +464,8 @@ async def start():
         if prof:
             if prof["gender"]:
                 cl.user_session.set("gender", prof["gender"])
-            await _send(f"👋 다시 오셨어요, **{user}**님! 저장해둔 사주를 불러왔어요.")
+            await _send(f"👋 다시 오셨어요, **{user}**님! 저장해둔 사주를 불러왔어요. "
+                        "*(모든 리포트는 자동 저장 — `/me` 개인 보고서에서 다시 볼 수 있어요)*")
             await _show_for_birth(prof["birth"])
             return
         await _send(f"👋 **{user}**님 환영해요! 생년월일시를 알려주시면 저장해둘게요.\n\n" + WELCOME)

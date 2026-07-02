@@ -18,14 +18,17 @@ import os
 
 import chainlit as cl
 
-from engine import store
+import fusion
+import reports_store
+from engine import narrator, store
 from philosophy import store as philo_store
 
 import philo_service as philo  # noqa: E402 — import 부수효과로 philo_* 액션 등록
 import saju_service as saju    # noqa: E402 — 사주 액션(category/preset/…) 등록
 
-store.init_db()        # users/profiles/candidates — 멱등
-philo_store.init_db()  # philo_profiles — 같은 DB 파일에 테이블 추가
+store.init_db()          # users/profiles/candidates — 멱등
+philo_store.init_db()    # philo_diagnoses — 같은 DB 파일에 테이블 추가
+reports_store.init_db()  # saju/philo/fusion 탐색 히스토리(/me 보고서)
 
 PROFILE_SAJU = "🔮 사주 운세"
 PROFILE_PHILO = "🧭 철학 탐구"
@@ -85,6 +88,69 @@ async def on_settings_update(settings):
         await philo.on_settings(settings)
     else:
         await saju.on_settings(settings)
+
+
+# ── 사주 × 철학 통합 리포트 — 프로필 중립(양쪽 메뉴에서 진입) ────────────────
+def _current_username() -> str | None:
+    u = cl.user_session.get("user")
+    return getattr(u, "identifier", None) if u else None
+
+
+@cl.action_callback("fusion_report")
+async def on_fusion_report(action: cl.Action):
+    user = _current_username()
+    if not user:
+        await cl.Message(content="🔐 통합 리포트는 로그인해야 만들 수 있어요 — "
+                                 "두 프로필의 기록을 한 계정에 모아야 하거든요.").send()
+        return
+    missing = fusion.missing_parts(user)
+    if missing:
+        await cl.Message(content="🔗 통합 리포트에 아직 재료가 부족해요:\n"
+                                 + "\n".join(f"- {m}" for m in missing)).send()
+        return
+    async with cl.Step(name="🧮 두 렌즈의 재료 모으는 중… (사주 결정론 + 철학 진단)",
+                       type="tool") as st:
+        facts = await cl.make_async(fusion.gather_facts)(user)
+        st.output = (f"命 {facts['saju']['eight_chars']} ({facts['saju']['strength']}) × "
+                     f"哲 {facts['philo']['top_philosophers'][0].get('label')} 외 "
+                     f"{len(facts['philo']['top_philosophers']) - 1}명")
+    prompt = fusion.build_fusion_prompt(facts)
+    footer = fusion.fusion_footer(facts)
+    meta: dict = {}
+    if narrator.supports_streaming():
+        msg = cl.Message(content="")
+        await msg.send()
+        await msg.stream_token(f"# {fusion.FUSION_TITLE}\n\n_✍️ 두 렌즈를 겹쳐 읽는 중…_\n\n")
+
+        async def _on_token(tok: str):
+            await msg.stream_token(tok.replace("~", "∼"))
+
+        try:
+            body = await narrator.stream_openrouter(
+                prompt, on_token=_on_token, model=narrator.DEFAULT_MODEL, meta_out=meta)
+        except Exception as e:  # noqa: BLE001
+            await msg.remove()
+            await cl.Message(content=f"⚠️ 통합 리포트 생성 실패: {e}").send()
+            return
+        msg.content = f"# {fusion.FUSION_TITLE}\n\n" + body.replace("~", "∼") + footer
+        await msg.update()
+    else:
+        async with cl.Step(name="✍️ 통합 리포트 작성 중…", type="llm") as st:
+            try:
+                data, wall = await cl.make_async(narrator.call_llm_json)(prompt, timeout=240)
+            except Exception as e:  # noqa: BLE001
+                st.output = f"실패: {e}"
+                await cl.Message(content=f"⚠️ 통합 리포트 생성 실패: {e}").send()
+                return
+            body = (data.get("result") or "").strip()
+            meta = narrator.llm_meta(data, wall)
+            st.output = f"{meta.get('models')} · {meta.get('duration_ms')}ms"
+        await cl.Message(content=f"# {fusion.FUSION_TITLE}\n\n"
+                                 + body.replace("~", "∼") + footer).send()
+    reports_store.save_fusion_report(user, title=fusion.FUSION_TITLE, body=body + footer)
+    await cl.Message(content="💾 저장했어요 — **`/me` 개인 보고서 페이지**에서 지금까지의 "
+                             "모든 탐색(사주·철학·통합)을 언제든 다시 볼 수 있어요. "
+                             "(로그인 계정과 같은 아이디/비밀번호)").send()
 
 
 # 로그인(선택) — CHAINLIT_AUTH_SECRET 가 설정된 경우에만 활성화한다.

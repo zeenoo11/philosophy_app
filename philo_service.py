@@ -16,6 +16,7 @@ import threading
 import chainlit as cl
 from chainlit.input_widget import Slider, Switch
 
+import reports_store
 from engine import narrator
 from philosophy import store as philo_store
 from philosophy.diagnose import format_diagnosis
@@ -51,7 +52,10 @@ def _load_rag() -> PhiloRAG:
 
 
 def _username() -> str | None:
-    u = cl.user_session.get("user")
+    try:
+        u = cl.user_session.get("user")
+    except Exception:  # noqa: BLE001 — Chainlit 컨텍스트 밖(테스트 등)
+        return None
     return getattr(u, "identifier", None) if u else None
 
 
@@ -66,6 +70,9 @@ def _actions() -> list[cl.Action]:
         acts.append(cl.Action(name="philo_match_users", payload={},
                               label="🤝 나와 닮은 영혼 찾기",
                               tooltip="철학자 분포가 겹치는 다른 사용자 랭킹"))
+        acts.append(cl.Action(name="fusion_report", payload={},
+                              label="🔗 사주×철학 통합 리포트",
+                              tooltip="두 렌즈(사주·철학 진단)를 한 장의 보고서로"))
     return acts
 
 
@@ -86,7 +93,8 @@ async def start():
         if saved and saved.get("top_philosophers"):
             top = saved["top_philosophers"][0]
             greeting += (f"\n\n> 👋 다시 오셨어요, **{user}**님! 지난 진단에서 당신과 가장 "
-                         f"가까운 철학자는 **{top.get('label')}** 였어요. 새 생각을 들려주세요.")
+                         f"가까운 철학자는 **{top.get('label')}** 였어요. 새 생각을 들려주세요. "
+                         "*(진단은 자동 저장 — `/me` 개인 보고서에서 다시 볼 수 있어요)*")
     await cl.Message(content=greeting).send()
 
 
@@ -150,7 +158,7 @@ async def on_message(message: cl.Message):
     # 3) 회수만 모드 — 리포트가 곧 본문
     if retrieve_only:
         await cl.Message(content=_clean_md(report + footer), actions=_actions()).send()
-        _save_if_logged_in(query, diag, None)
+        _save_if_logged_in(query, diag, report)
         return
 
     # 4) LLM 진단문 — OpenRouter 백엔드면 토큰 스트리밍(사주 리포트와 동일 UX)
@@ -173,6 +181,7 @@ async def on_message(message: cl.Message):
             return
         msg.content = _clean_md(body) + footer
         await msg.update()
+        _save_if_logged_in(query, diag, body)
         if _actions():
             await cl.Message(content="", actions=_actions()).send()
     else:
@@ -186,21 +195,25 @@ async def on_message(message: cl.Message):
             body, meta = ans.answer, ans.meta or {}
             st.output = f"{meta.get('models')} · {meta.get('duration_ms')}ms"
         await cl.Message(content=_clean_md(body) + footer, actions=_actions()).send()
+        _save_if_logged_in(query, diag, body)
 
     async with cl.Step(name="ℹ️ 생성 정보 (모델·시간·비용)", type="llm") as mstep:
         mstep.output = (f"{meta.get('models')} · {meta.get('duration_ms')}ms · "
                         f"${meta.get('cost_usd')}")
 
-    _save_if_logged_in(query, diag, None)
 
-
-def _save_if_logged_in(query: str, diag, summary: str | None) -> None:
+def _save_if_logged_in(query: str, diag, body: str | None) -> None:
+    """최근 진단(닮은 영혼용) 갱신 + 탐색 히스토리(/me 보고서용) 적재."""
     user = _username()
     if not user or not diag.top_philosophers:
         return
     tops = [{"id": p.id, "label": p.label, "score": p.score, "n_support": p.n_support}
             for p in diag.top_philosophers]
-    philo_store.save_diagnosis(user, query=query, top_philosophers=tops, summary=summary)
+    philo_store.save_diagnosis(user, query=query, top_philosophers=tops,
+                               summary=(body or "")[:200] or None)
+    if body:
+        reports_store.save_philo_report(user, query=query, body=body,
+                                        top_philosophers=tops)
 
 
 @cl.action_callback("philo_match_users")
