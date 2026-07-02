@@ -1,0 +1,22 @@
+# presets/mangpa.yaml — 맹파명리 (대조군: L3 용신 레이어를 우회)
+# 용신/기신 체계 대신 주공(主公)·상(象)·빈주(賓主)·체용(體用) 구조를 산출한다.
+# 결정론 레이어는 동일하게 8글자를 내지만, 해석 엔진 자체가 다르다.
+preset_id: mangpa
+display_name: "맹파명리 (단건업 계열)"
+# 단건업(1967~), 곽금양 사사, 2002 체계화. 빈주·체용·주공 (docs/schools.md §5)
+lineage: "단건업(段建業, 1967~)=단씨명리 / 곽금양 사사 · 박형규 전달"
+description: "용신을 쓰지 않고 주공(做功)·상(象)·빈주(賓主)·체용(體用)으로 국(局)을 읽는 대조 유파"
+
+deterministic:
+  sipiunseong_theory: eumyang_sunyeok
+  woryulbunya_theory: sammyeongtonghoe   # ← 월률분야 이론이 다름 (지장간 일수 분기)
+  jasi_rule: jasi_unified                # ← 자시 통합 계열
+  true_solar_time: true
+  longitude_deg: 127.0
+
+interpretation:
+  engine: structure          # ← 용신 엔진 자체를 바꿈
+  yongsin_policy: null       # 용신·기신 미사용
+  features: [jugong, sang, binju, cheyong]   # 주공/상/빈주/체용
+  use_sinsal: false
+  use_mulsang: true

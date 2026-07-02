@@ -1,0 +1,23 @@
+# presets/sinpa_dongsaeng.yaml — 현대 신파 · 동생동사(同生同死) 십이운성 계열
+# 근거: docs/schools.md §5·§6.1. 십이운성에서 음간(乙丁己辛癸)을 양간처럼 본다(동생동사).
+# 적천수천미(임철초)의 '음간 역행 장생' 비판에서 출발해 일본 추명학(다케다 코겐)·현대 신파가
+# 채택(차분 기대) → 십이운성/운성 라벨이 음양순역설(전통 자평)과 갈린다. 8글자 자체는 동일.
+#   용신은 적천수의 중화·기세관을 따라 억부+전왕으로 잡는다.
+preset_id: sinpa_dongsaeng
+display_name: "현대 신파 (동생동사 십이운성)"
+lineage: "적천수천미(任鐵樵) → 일본 추명학(武田考玄) / 현대 신파"
+description: "음간을 양간과 같은 십이운성으로 보는 동생동사설, 중화·기세를 중시하는 계열"
+
+deterministic:
+  sipiunseong_theory: dongsaeng_dongsa   # ← 음간도 양간처럼 (음양순역설과 분기 지점)
+  woryulbunya_theory: japyeongjinjeon
+  jasi_rule: yajasi_split
+  true_solar_time: true
+  longitude_deg: 127.0
+
+interpretation:
+  sinkang_weights: { woljji: 3.0, ilji: 1.5, others: 1.0 }
+  yongsin_policy: [eokbu, jeonwang, johu]   # 적천수 중화·기세 → 억부 + 전왕
+  engine: yongsin
+  use_sinsal: false
+  use_mulsang: false

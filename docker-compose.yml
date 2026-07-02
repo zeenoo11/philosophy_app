@@ -1,0 +1,32 @@
+# 哲命 — 철학×사주 플랫폼 docker compose
+# 사용:  docker compose up --build   (.env 에 OPENROUTER_API_KEY)
+#        → http://localhost:8123        랜딩
+#        → http://localhost:8123/chat   채팅(프로필: 사주/철학)
+services:
+  platform:
+    build:
+      context: .
+      # sxtwl 휠은 amd64만 제공 — Apple Silicon 등에서는 에뮬레이션 필요
+      platforms:
+        - "linux/amd64"
+    image: philo-saju
+    ports:
+      - "8123:8123"
+    # LLM 인증/설정은 .env 에서 주입 (이미지에는 시크릿을 굽지 않음)
+    #   OPENROUTER_API_KEY=sk-or-...   → OpenRouter 백엔드 자동(권장: 빠름·저렴·한도설정 가능)
+    #   (없으면 결정론 기능(차트·매칭)만 동작, LLM 리포트/철학 대화는 실패 안내)
+    env_file:
+      - .env
+    environment:
+      # 모델 기본값: OpenRouter면 deepseek/deepseek-v4-flash, claude면 sonnet (백엔드별 자동).
+      #   바꾸려면 .env 에 SAJU_LLM_MODEL=... 추가.
+      # claude 백엔드를 쓰려면 .env 에 ANTHROPIC_API_KEY + SAJU_LLM_BACKEND=claude
+      SAJU_TRACE: ${SAJU_TRACE:-0}
+      SAJU_DB_PATH: /app/data/saju.db
+    volumes:
+      # 사용자 DB(계정·사주 프로필·철학 좌표) 영속화 — 컨테이너 재생성에도 유지
+      - platform-db:/app/data
+    restart: unless-stopped
+
+volumes:
+  platform-db:

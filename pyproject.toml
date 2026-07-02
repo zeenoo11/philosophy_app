@@ -1,0 +1,43 @@
+[project]
+name = "philo-saju-platform"
+version = "0.2.0"
+description = "철학 탐구 × 사주 운세 — 나를 아는 두 개의 렌즈를 한 플랫폼에서"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "skyfield>=1.49", # 절기(태양 황경) 천문 계산 — 사주 엔진
+    "sxtwl==2.0.7", # 寿星天文历 — 교차출처 oracle (Windows cp311 휠 한정)
+    "pyyaml>=6.0", # 유파 프리셋 레지스트리 로딩
+    "tzdata>=2024.1", # Windows zoneinfo용 IANA tz DB (Asia/Seoul 역사 오프셋)
+    "chainlit>=2.11.1", # 채팅 UI (fastapi·httpx 포함 — 랜딩/OpenRouter 겸용)
+]
+
+[project.optional-dependencies]
+# MLflow 트레이싱 — 선택(extra). 기본/Docker 빌드에서 제외해 이미지 경량화.
+# 켜려면: uv sync --extra tracing  (engine/tracing.py 는 mlflow 없으면 no-op)
+tracing = ["mlflow>=3.14.0"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "hypothesis>=6.100",   # L1 속성 기반 테스트
+    "syrupy>=4.6",         # L3 스냅샷 (해석 레이어 회귀 고정)
+    "pytest-xdist>=3.5",   # 테스트 병렬화
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "deterministic: L1 결정론 레이어 (정답 존재)",
+    "interpretation: L3/L4 해석 레이어 (정답 없음, 규칙 충실도만 검증)",
+    "oracle: 외부 라이브러리(sxtwl) 교차검증 — 네트워크/설치 의존",
+    "astro: 천문 계산(skyfield) — 에페메리스 필요",
+    "slow: 느린 테스트 (광범위 스윕)",
+    "llm: LLM 호출 (외부/비용) — RUN_LLM_TESTS=1 로 활성화",
+    "philosophy: 철학 분석 서비스 (매칭·저장 — 결정론)",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.uv]
+package = false

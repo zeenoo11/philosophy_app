@@ -1,0 +1,21 @@
+# presets/jeongtong_eokbu.yaml — 정통 자평 · 억부 우선 (한국 표준 계열)
+# 프리셋 파일 = 그 유파의 명세서 (SPEC §2.1). 별도 산문 설명서를 두지 않는다.
+preset_id: jeongtong_eokbu
+display_name: "정통 자평 (억부 중심)"
+# 억부의 이론적 정초는 적천수(임철초·서락오), 한국 표준화는 이석영·박재완 계열 (docs/schools.md §4)
+lineage: "적천수(任鐵樵·徐樂吾) / 한국 표준 억부 — 이석영(사주첩경)·박재완(명리요강)"
+description: "신강·신약 판정 후 억부용신을 1순위로 잡는 가장 보편적 계열 (한국 표준)"
+
+deterministic:                          # ← 출력 '글자'가 바뀌는 이산 토글
+  sipiunseong_theory: eumyang_sunyeok   # 음양순역설 | dongsaeng_dongsa | sutodonggung
+  woryulbunya_theory: japyeongjinjeon   # myeongni_chumyeong | japyeongjinjeon | sammyeongtonghoe
+  jasi_rule: yajasi_split               # 야자시 분리 | jasi_unified
+  true_solar_time: true                 # 진태양시(경도+균시차) 보정
+  longitude_deg: 127.0
+
+interpretation:                         # ← 해석 정책 (L2/L3)
+  sinkang_weights: { woljji: 3.0, ilji: 1.5, others: 1.0 }
+  yongsin_policy: [eokbu, johu, byeongyak]   # 우선순위 = 정책 분기
+  engine: yongsin
+  use_sinsal: true
+  use_mulsang: false

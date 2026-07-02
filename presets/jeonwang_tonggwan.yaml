@@ -1,0 +1,22 @@
+# presets/jeonwang_tonggwan.yaml — 전왕·통관 우선 계열 (격국 변격 중시)
+# 억부와 동일 결정론 토글이되, 용신 정책 우선순위만 다르다(차분 기대):
+#   전왕(專旺) → 통관(通關) → 억부(抑扶) 순으로 첫 성립 정책을 채택.
+#   세력이 한쪽으로 압도하면 順勢(전왕), 두 세력이 싸우면 通關, 그 외엔 억부로 회귀.
+preset_id: jeonwang_tonggwan
+display_name: "전왕·통관 우선 (변격 중시)"
+lineage: "적천수(전왕) / 자평 통관론"
+description: "종왕·종강 등 변격과 상전(相戰) 통관을 억부보다 먼저 적용하는 계열"
+
+deterministic:
+  sipiunseong_theory: eumyang_sunyeok
+  woryulbunya_theory: japyeongjinjeon
+  jasi_rule: yajasi_split
+  true_solar_time: true
+  longitude_deg: 127.0
+
+interpretation:
+  sinkang_weights: { woljji: 3.0, ilji: 1.5, others: 1.0 }
+  yongsin_policy: [jeonwang, tongwan, eokbu]   # ← 전왕·통관을 억부보다 우선
+  engine: yongsin
+  use_sinsal: false
+  use_mulsang: false

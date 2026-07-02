@@ -1,0 +1,21 @@
+# presets/johu_centered.yaml — 조후(調候) 우선 계열
+# 억부와 동일한 결정론 토글을 쓰되, 용신 정책에서 조후를 1순위로 둔다.
+# → 결정론 레이어(8글자)는 jeongtong_eokbu 와 반드시 동일, 용신만 갈린다(차분 기대).
+preset_id: johu_centered
+display_name: "조후 중심 (궁통보감 계열)"
+lineage: "궁통보감(欄江網) / 조후용신 전통"
+description: "한난조습(寒暖燥濕)의 균형(조후)을 용신 선정의 1순위로 삼는 계열"
+
+deterministic:
+  sipiunseong_theory: eumyang_sunyeok
+  woryulbunya_theory: japyeongjinjeon
+  jasi_rule: yajasi_split
+  true_solar_time: true
+  longitude_deg: 127.0
+
+interpretation:
+  sinkang_weights: { woljji: 3.0, ilji: 1.5, others: 1.0 }
+  yongsin_policy: [johu, eokbu, byeongyak]   # ← 조후 1순위 (억부와 분기 지점)
+  engine: yongsin
+  use_sinsal: false
+  use_mulsang: false

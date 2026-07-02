@@ -1,0 +1,23 @@
+# presets/byeongyak_sinbong.yaml — 병약(病藥) 우선 (명리정종/신봉통고 계열)
+# 근거: docs/schools.md §3(명리정종)·§2. 억부와 동일한 결정론 토글이되, 용신 정책에서
+# 병약을 1순위로 둔다(차분 기대) → 결정론 8글자는 jeongtong_eokbu 와 동일, 용신만 갈린다.
+#   사주의 '병(病)'(과다 오행)을 찾아 그를 극하는 '약(藥)'을 용신으로 삼는 장남(張楠 神峰)의
+#   병약설. 뚜렷한 병이 없으면 억부로 회귀(engine/yongsin/byeongyak.py: 미성립 시 None).
+preset_id: byeongyak_sinbong
+display_name: "병약 중심 (명리정종 계열)"
+lineage: "명리정종(命理正宗)=신봉통고(神峰通考) / 장남(張楠) 병약설"
+description: "사주의 병(病)을 제거하는 약(藥)을 용신 1순위로 삼는 계열 (억부의 정밀화)"
+
+deterministic:
+  sipiunseong_theory: eumyang_sunyeok
+  woryulbunya_theory: japyeongjinjeon
+  jasi_rule: yajasi_split
+  true_solar_time: true
+  longitude_deg: 127.0
+
+interpretation:
+  sinkang_weights: { woljji: 3.0, ilji: 1.5, others: 1.0 }
+  yongsin_policy: [byeongyak, eokbu, johu]   # ← 병약 1순위 (억부와 분기 지점)
+  engine: yongsin
+  use_sinsal: true
+  use_mulsang: false

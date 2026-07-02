@@ -1,6 +1,29 @@
-.env
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.hypothesis/
 
-# chainlit
-.chainlit/
+# Ephemeris cache (skyfield) — 큰 바이너리, 런타임에 다운로드/캐시
+engine/_ephemeris/*.bsp
+engine/_ephemeris/*.dat
+
+# 스냅샷 임시
+__snapshots__/*.ambr.tmp
+
+# 시크릿 — 절대 커밋 금지 (OPENROUTER_API_KEY 등)
+.env
+.env.*
+!.env.example
+
+# 런타임 산출물
+*.db
+mlruns/
+build*.log
+qa_out/
+.files/
+
+# chainlit 로컬 번역 캐시 (config.toml 은 커밋)
+.chainlit/translations/

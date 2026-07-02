@@ -1,0 +1,22 @@
+# presets/sammyeong_gobeop.yaml — 삼명통회(三命通會) 고법·신살 종합 계열
+# 근거: docs/schools.md §3(삼명통회)·§6.2. 월률분야(지장간 사령)를 삼명통회식으로 잡고
+# 신살을 적극 반영한다(차분 기대) → 결정론 레이어의 지장간/십신이 자평진전식과 갈린다
+#   (본기 일수가 더 길고, 子월 지장간에 辛이 포함되는 등). 8글자(천간·지지) 자체는 동일.
+preset_id: sammyeong_gobeop
+display_name: "삼명통회 (고법·신살 종합)"
+lineage: "삼명통회(三命通會) / 만민영(萬民英)"
+description: "월률분야를 삼명통회식으로 잡고 납음·신살을 적극 반영하는 백과적 종합 계열"
+
+deterministic:
+  sipiunseong_theory: eumyang_sunyeok
+  woryulbunya_theory: sammyeongtonghoe   # ← 지장간 사령 일수가 자평진전식과 다름(분기 지점)
+  jasi_rule: jasi_unified
+  true_solar_time: true
+  longitude_deg: 127.0
+
+interpretation:
+  sinkang_weights: { woljji: 3.0, ilji: 1.5, others: 1.0 }
+  yongsin_policy: [eokbu, johu, byeongyak]
+  engine: yongsin
+  use_sinsal: true                       # ← 신살 적극 활용 (고법 색채)
+  use_mulsang: false

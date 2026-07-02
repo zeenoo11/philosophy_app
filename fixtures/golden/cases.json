@@ -1,0 +1,422 @@
+[
+  {
+    "id": "std_1955",
+    "input": {
+      "year": 1955,
+      "month": 7,
+      "day": 20,
+      "hour": 16,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 31,
+        "name": "을미"
+      },
+      "month": {
+        "gz60": 19,
+        "name": "계미"
+      },
+      "day": {
+        "gz60": 18,
+        "name": "임오"
+      },
+      "hour": {
+        "gz60": 44,
+        "name": "무신"
+      },
+      "eight_chars": "을미 계미 임오 무신"
+    },
+    "cross_checked": "sxtwl",
+    "note": "여름 한낮, 未월 중간"
+  },
+  {
+    "id": "std_1968",
+    "input": {
+      "year": 1968,
+      "month": 11,
+      "day": 25,
+      "hour": 6,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 44,
+        "name": "무신"
+      },
+      "month": {
+        "gz60": 59,
+        "name": "계해"
+      },
+      "day": {
+        "gz60": 35,
+        "name": "기해"
+      },
+      "hour": {
+        "gz60": 3,
+        "name": "정묘"
+      },
+      "eight_chars": "무신 계해 기해 정묘"
+    },
+    "cross_checked": "sxtwl",
+    "note": "亥월, 새벽"
+  },
+  {
+    "id": "std_1984",
+    "input": {
+      "year": 1984,
+      "month": 2,
+      "day": 10,
+      "hour": 10,
+      "minute": 30
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 0,
+        "name": "갑자"
+      },
+      "month": {
+        "gz60": 2,
+        "name": "병인"
+      },
+      "day": {
+        "gz60": 10,
+        "name": "갑술"
+      },
+      "hour": {
+        "gz60": 5,
+        "name": "기사"
+      },
+      "eight_chars": "갑자 병인 갑술 기사"
+    },
+    "cross_checked": "sxtwl",
+    "note": "입춘 직후 寅월"
+  },
+  {
+    "id": "std_1990",
+    "input": {
+      "year": 1990,
+      "month": 6,
+      "day": 15,
+      "hour": 14,
+      "minute": 30
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 6,
+        "name": "경오"
+      },
+      "month": {
+        "gz60": 18,
+        "name": "임오"
+      },
+      "day": {
+        "gz60": 47,
+        "name": "신해"
+      },
+      "hour": {
+        "gz60": 31,
+        "name": "을미"
+      },
+      "eight_chars": "경오 임오 신해 을미"
+    },
+    "cross_checked": "sxtwl",
+    "note": "午월 오후"
+  },
+  {
+    "id": "std_2000",
+    "input": {
+      "year": 2000,
+      "month": 1,
+      "day": 15,
+      "hour": 8,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 15,
+        "name": "기묘"
+      },
+      "month": {
+        "gz60": 13,
+        "name": "정축"
+      },
+      "day": {
+        "gz60": 8,
+        "name": "임신"
+      },
+      "hour": {
+        "gz60": 40,
+        "name": "갑진"
+      },
+      "eight_chars": "기묘 정축 임신 갑진"
+    },
+    "cross_checked": "sxtwl",
+    "note": "丑월, 2000년대"
+  },
+  {
+    "id": "std_2010",
+    "input": {
+      "year": 2010,
+      "month": 3,
+      "day": 15,
+      "hour": 11,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 26,
+        "name": "경인"
+      },
+      "month": {
+        "gz60": 15,
+        "name": "기묘"
+      },
+      "day": {
+        "gz60": 0,
+        "name": "갑자"
+      },
+      "hour": {
+        "gz60": 6,
+        "name": "경오"
+      },
+      "eight_chars": "경인 기묘 갑자 경오"
+    },
+    "cross_checked": "sxtwl",
+    "note": "卯월 오전"
+  },
+  {
+    "id": "std_2024",
+    "input": {
+      "year": 2024,
+      "month": 9,
+      "day": 22,
+      "hour": 9,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 40,
+        "name": "갑진"
+      },
+      "month": {
+        "gz60": 9,
+        "name": "계유"
+      },
+      "day": {
+        "gz60": 25,
+        "name": "기축"
+      },
+      "hour": {
+        "gz60": 5,
+        "name": "기사"
+      },
+      "eight_chars": "갑진 계유 기축 기사"
+    },
+    "cross_checked": "sxtwl",
+    "note": "酉월, 최근"
+  },
+  {
+    "id": "hist_1936",
+    "input": {
+      "year": 1936,
+      "month": 4,
+      "day": 18,
+      "hour": 13,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 12,
+        "name": "병자"
+      },
+      "month": {
+        "gz60": 28,
+        "name": "임진"
+      },
+      "day": {
+        "gz60": 6,
+        "name": "경오"
+      },
+      "hour": {
+        "gz60": 19,
+        "name": "계미"
+      },
+      "eight_chars": "병자 임진 경오 계미"
+    },
+    "cross_checked": "sxtwl",
+    "note": "역사 tz(일제 +9), 辰월"
+  },
+  {
+    "id": "hist_1958",
+    "input": {
+      "year": 1958,
+      "month": 8,
+      "day": 12,
+      "hour": 15,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 34,
+        "name": "무술"
+      },
+      "month": {
+        "gz60": 56,
+        "name": "경신"
+      },
+      "day": {
+        "gz60": 57,
+        "name": "신유"
+      },
+      "hour": {
+        "gz60": 32,
+        "name": "병신"
+      },
+      "eight_chars": "무술 경신 신유 병신"
+    },
+    "cross_checked": "sxtwl",
+    "note": "서머타임 적용기, 申월"
+  },
+  {
+    "id": "noon_1972",
+    "input": {
+      "year": 1972,
+      "month": 12,
+      "day": 10,
+      "hour": 12,
+      "minute": 0
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 48,
+        "name": "임자"
+      },
+      "month": {
+        "gz60": 48,
+        "name": "임자"
+      },
+      "day": {
+        "gz60": 11,
+        "name": "을해"
+      },
+      "hour": {
+        "gz60": 18,
+        "name": "임오"
+      },
+      "eight_chars": "임자 임자 을해 임오"
+    },
+    "cross_checked": "sxtwl",
+    "note": "子월 정오"
+  },
+  {
+    "id": "eve_2001",
+    "input": {
+      "year": 2001,
+      "month": 5,
+      "day": 8,
+      "hour": 19,
+      "minute": 30
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 17,
+        "name": "신사"
+      },
+      "month": {
+        "gz60": 29,
+        "name": "계사"
+      },
+      "day": {
+        "gz60": 7,
+        "name": "신미"
+      },
+      "hour": {
+        "gz60": 34,
+        "name": "무술"
+      },
+      "eight_chars": "신사 계사 신미 무술"
+    },
+    "cross_checked": "sxtwl",
+    "note": "巳월 저녁"
+  },
+  {
+    "id": "morn_1947",
+    "input": {
+      "year": 1947,
+      "month": 10,
+      "day": 3,
+      "hour": 7,
+      "minute": 30
+    },
+    "config": {
+      "true_solar_time": false,
+      "jasi_rule": "yajasi_split"
+    },
+    "expected": {
+      "year": {
+        "gz60": 23,
+        "name": "정해"
+      },
+      "month": {
+        "gz60": 45,
+        "name": "기유"
+      },
+      "day": {
+        "gz60": 51,
+        "name": "을묘"
+      },
+      "hour": {
+        "gz60": 16,
+        "name": "경진"
+      },
+      "eight_chars": "정해 기유 을묘 경진"
+    },
+    "cross_checked": "sxtwl",
+    "note": "戌월 아침(해방 직후)"
+  }
+]
