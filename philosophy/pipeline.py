@@ -11,6 +11,7 @@ import re
 import time
 from dataclasses import dataclass, field
 
+from philosophy import values as schwartz
 from philosophy.decompose import decompose
 from philosophy.diagnose import build_diagnosis, format_diagnosis
 from philosophy.retriever import LiteRetriever
@@ -31,7 +32,8 @@ DIAGNOSIS_SYSTEM_PROMPT = """당신은 사용자의 가치관·생각을 철학 
 ## 당신과 유사한 사상
 위 내용을 종합해 사용자의 가치관을 한 문단으로 해석한다 — 어떤 철학적 입장에 서 있고,
 무엇을 중시하며, 어떤 긴장(tension)을 품고 있는지. 대비되는 입장(opposes)이 있으면
-그 긴장도 언급한다.
+그 긴장도 언급한다. 회수 결과에 '가치 프로파일(Schwartz)'이 있으면 지향 가치
+1~2개를 자연스럽게 녹여 설명한다(수치 나열은 금지).
 
 작성 규칙:
 - 반드시 한국어로 작성한다 (철학자 이름·개념은 한국어 관례 표기, 필요시 원어 병기).
@@ -87,9 +89,14 @@ class PhiloRAG:
             "rank_philosophers",
             lambda: self.retriever.rank_philosophers(bundles, top_k=top_k),
             lambda ps: ", ".join(f"{p.label}({p.score})" for p in ps[:5]) or "(없음)")
+        vscores = _timed(
+            "value_profile",
+            lambda: schwartz.score_values(bundles, graph=self.retriever.graph),
+            lambda vs: " · ".join(f"{n} +{s}" for n, _q, s in schwartz.top_values(vs))
+                       or "(가치 표명 없음)")
         diag = _timed(
             "build_diagnosis",
-            lambda: build_diagnosis(query, claims, bundles, top_phil),
+            lambda: build_diagnosis(query, claims, bundles, top_phil, value_scores=vscores),
             lambda d: f"유사주장 {len(d.similar_claims)}건 · 대비 {len(d.contrasting_claims)}건")
         return DiagnosisRun(diagnosis=diag, steps=steps)
 

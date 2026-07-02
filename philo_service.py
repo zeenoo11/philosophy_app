@@ -20,6 +20,7 @@ import mdutil
 import reports_store
 from engine import narrator
 from philosophy import store as philo_store
+from philosophy import values as schwartz
 from philosophy.diagnose import format_diagnosis
 from philosophy.pipeline import PhiloRAG
 
@@ -151,10 +152,17 @@ async def on_message(message: cl.Message):
                                  "생각을 조금 더 구체적인 **주장 형태**로 적어주시겠어요?").send()
         return
 
-    footer = (f"\n\n---\n> 📎 **이 진단의 근거**: SEP 지식그래프(3,600노드·8,397엣지) · "
-              f"명제 {len(diag.sub_claims)}개 · 유사주장 {len(diag.similar_claims)}건 · "
-              f"대비입장 {len(diag.contrasting_claims)}건 — 원문 인용은 위 "
-              f"'진단 근거' 단계에서 확인")
+    value_line = ""
+    if schwartz.has_signal(diag.value_scores):
+        tops = schwartz.top_values(diag.value_scores)
+        value_line = ("\n\n> 🎯 **가치 지향 (Schwartz)**: "
+                      + " · ".join(f"{n} ({q})" for n, q, _s in tops)
+                      + " — 8각 프로파일은 [📖 내 기록 (/me)](/me) 에서")
+    footer = (value_line
+              + f"\n\n---\n> 📎 **이 진단의 근거**: SEP 지식그래프(3,600노드·8,397엣지) · "
+                f"명제 {len(diag.sub_claims)}개 · 유사주장 {len(diag.similar_claims)}건 · "
+                f"대비입장 {len(diag.contrasting_claims)}건 · 가치층 promotes/demotes 집계 "
+                f"— 원문 인용은 위 '진단 근거' 단계에서 확인")
 
     # 3) 회수만 모드 — 리포트가 곧 본문
     if retrieve_only:
@@ -204,14 +212,15 @@ async def on_message(message: cl.Message):
 
 
 def _save_if_logged_in(query: str, diag, body: str | None) -> None:
-    """최근 진단(닮은 영혼용) 갱신 + 탐색 히스토리(/me 보고서용) 적재."""
+    """최근 진단(닮은 영혼·8각 프로파일용) 갱신 + 탐색 히스토리(/me) 적재."""
     user = _username()
     if not user or not diag.top_philosophers:
         return
     tops = [{"id": p.id, "label": p.label, "score": p.score, "n_support": p.n_support}
             for p in diag.top_philosophers]
     philo_store.save_diagnosis(user, query=query, top_philosophers=tops,
-                               summary=(body or "")[:200] or None)
+                               summary=(body or "")[:200] or None,
+                               value_scores=diag.value_scores)
     if body:
         reports_store.save_philo_report(user, query=query, body=body,
                                         top_philosophers=tops)

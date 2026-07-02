@@ -69,6 +69,7 @@ class Diagnosis:
     school_concepts: list[RetrievedNode] = field(default_factory=list)
     similar_claims: list[RetrievedNode] = field(default_factory=list)
     contrasting_claims: list[RetrievedNode] = field(default_factory=list)
+    value_scores: dict = field(default_factory=dict)  # Schwartz 10차원 raw (values.py)
 
 
 @dataclass

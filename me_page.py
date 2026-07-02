@@ -4,13 +4,14 @@
 서버에서 escape 해 숨겨두고, 클라이언트에서 marked + DOMPurify(CDN)로
 렌더한다(LLM 생성 텍스트 — sanitize 필수).
 
-구성: 프로필(命 팔자 미니 격자 + 哲 top 철학자) → 🔗 통합 리포트 →
-🔮 사주 기록 → 🧭 철학 기록. 데이터는 reports_store / engine.store /
-philosophy.store 에서 읽는다.
+구성: 프로필(命 팔자 미니 격자 + 哲 top 철학자 + 🎯 Schwartz 8각 레이더) →
+🔗 통합 리포트 → 🔮 사주 기록 → 🧭 철학 기록. 데이터는 reports_store /
+engine.store / philosophy.store 에서 읽고, 레이더 SVG 는 서버가 결정론으로 그린다.
 """
 from __future__ import annotations
 
 import html
+import math
 
 import reports_store
 from engine import store as saju_store
@@ -18,6 +19,7 @@ from engine.pillars import compute_chart
 from engine.presets import load_preset
 from engine.reports import DEFAULT_PRESET
 from philosophy import store as philo_store
+from philosophy import values as schwartz
 
 
 def _md_block(body: str) -> str:
@@ -67,6 +69,63 @@ def _philo_card(username: str) -> str:
     q = html.escape((diag.get("query") or "")[:70])
     return (f'<div class="card"><span class="tag"><b class="a">哲</b> 철학 진단</span>'
             f'<p class="quote">“{q}”</p><ol class="phil-list">{rows}</ol></div>')
+
+
+def _octagon_svg(axes: list[tuple[str, float]]) -> str:
+    """Schwartz 8각 레이더 SVG — 서버 결정론 렌더 (axes: [(라벨, 0~10)] 8개).
+
+    축 순서는 circumplex — 대각이 이론적 대립(자기주도↔안전, 성취↔자애 등)과 마주본다.
+    """
+    cx, cy, radius = 130.0, 118.0, 82.0
+
+    def pt(i: int, r: float) -> tuple[float, float]:
+        a = math.radians(-90 + i * 45)
+        return (round(cx + r * math.cos(a), 1), round(cy + r * math.sin(a), 1))
+
+    def ring(r: float) -> str:
+        return " ".join(f"{x},{y}" for x, y in (pt(i, r) for i in range(8)))
+
+    shape = " ".join(f"{x},{y}" for x, y in
+                     (pt(i, radius * v / 10.0) for i, (_l, v) in enumerate(axes)))
+    spokes = "".join(
+        f'<line class="sp" x1="{cx}" y1="{cy}" x2="{x}" y2="{y}"/>'
+        for x, y in (pt(i, radius) for i in range(8)))
+    dots = "".join(f'<circle class="dt" cx="{x}" cy="{y}" r="2.6"/>'
+                   for x, y in (pt(i, radius * v / 10.0)
+                                for i, (_l, v) in enumerate(axes)))
+    labels = []
+    for i, (label, v) in enumerate(axes):
+        x, y = pt(i, radius + 17)
+        anchor = "middle" if i in (0, 4) else ("start" if 1 <= i <= 3 else "end")
+        dy = 4 if i in (3, 4, 5) else 0
+        labels.append(f'<text class="lb" x="{x}" y="{y + dy}" text-anchor="{anchor}">'
+                      f'{html.escape(label)} <tspan class="vv">{v:g}</tspan></text>')
+    return (f'<svg class="octa" viewBox="0 0 260 240" role="img" '
+            f'aria-label="Schwartz 가치 8각 프로파일">'
+            f'<polygon class="gr" points="{ring(radius)}"/>'
+            f'<polygon class="gr" points="{ring(radius / 2)}"/>{spokes}'
+            f'<polygon class="sh" points="{shape}"/>{dots}{"".join(labels)}</svg>')
+
+
+def _values_card(username: str) -> str:
+    diag = philo_store.get_diagnosis(username)
+    raw = (diag or {}).get("value_scores") or {}
+    octa = schwartz.to_octagon(raw)
+    if not octa:
+        return ('<div class="card"><span class="tag"><b class="a">🎯</b> 가치 프로파일 '
+                '(Schwartz)</span><p class="empty">아직 없어요 — 🧭 철학 탐구에서 가치관을 '
+                '진단하면 회수된 주장의 가치층(promotes/demotes)으로 8각 프로파일이 '
+                '그려집니다.</p></div>')
+    tops = schwartz.top_values(raw)
+    top_line = " · ".join(f"{n} <span>({q})</span>" for n, q, _s in tops)
+    return (f'<div class="card card-wide"><span class="tag"><b class="a">🎯</b> 가치 '
+            f'프로파일 (Schwartz 기본가치)</span>'
+            f'<div class="octa-wrap">{_octagon_svg(octa)}'
+            f'<div class="octa-side"><p class="octa-top">지향: {top_line}</p>'
+            f'<p class="meta">회수된 유사 주장의 가치층(promotes/demotes × 유사도) 결정론 '
+            f'집계 — 최댓값을 10으로 하는 상대 스케일. 축 배열은 Schwartz 원형 구조로, '
+            f'마주보는 축은 이론상 긴장 관계(자기주도↔안전, 성취↔자애)예요.</p></div>'
+            f'</div></div>')
 
 
 def _section(icon: str, title: str, entries: list[str], empty_hint: str) -> str:
@@ -141,6 +200,18 @@ def render_me_page(username: str) -> str:
   .phil-list{{margin:12px 0 0 18px;display:grid;gap:6px;font-size:.88rem}}
   .phil-list span{{color:var(--mist);font-size:.78rem;margin-left:8px}}
   .empty{{color:var(--mist);font-size:.88rem}}
+  .card-wide{{grid-column:1 / -1}}
+  .octa-wrap{{display:flex;gap:24px;align-items:center;flex-wrap:wrap}}
+  .octa{{width:280px;max-width:100%;flex:0 0 auto}}
+  .octa .gr{{fill:none;stroke:var(--line);stroke-width:1}}
+  .octa .sp{{stroke:var(--line);stroke-width:1}}
+  .octa .sh{{fill:color-mix(in srgb,var(--aegean) 30%,transparent);stroke:var(--aegean);
+            stroke-width:2;stroke-linejoin:round}}
+  .octa .dt{{fill:var(--aegean)}}
+  .octa .lb{{fill:var(--paper);font-family:var(--body);font-size:11.5px}}
+  .octa .vv{{fill:var(--mist);font-family:var(--mono);font-size:9.5px}}
+  .octa-side{{flex:1;min-width:220px}}
+  .octa-top{{font-size:.92rem}} .octa-top span{{color:var(--mist);font-size:.8rem}}
   .records{{margin-top:52px}}
   .records h2{{font-family:var(--disp);font-size:1.3rem;border-bottom:1px solid var(--line);
               padding-bottom:10px;display:flex;align-items:baseline;gap:10px}}
@@ -183,6 +254,7 @@ def render_me_page(username: str) -> str:
 <div class="cards">
 {_saju_card(username)}
 {_philo_card(username)}
+{_values_card(username)}
 </div>
 
 {_section("🔗", "통합 리포트 — 사주 × 철학", fusion_entries,

@@ -68,3 +68,15 @@ def test_opposes_from_graph(retriever):
     # opposes 는 데이터 의존 — 형식만 보장(있다면 claim/concept 이고 점수 부여)
     for o in b.opposes_claims:
         assert o.score is not None
+
+
+def test_love_query_yields_value_profile(love_bundles, retriever):
+    """사랑 질의는 가치층 신호(자애/보편 등 자기 초월 계열)가 잡혀야 한다."""
+    from philosophy import values as schwartz
+
+    raw = schwartz.score_values(love_bundles, graph=retriever.graph)
+    assert schwartz.has_signal(raw), "love 문서는 가치 함유 (Plan 3 파일럿 기준)"
+    octa = schwartz.to_octagon(raw)
+    assert octa is not None and len(octa) == 8
+    tops = schwartz.top_values(raw)
+    assert any(q == "자기 초월" for _n, q, _s in tops), f"사랑 → 자기 초월 계열 기대: {tops}"

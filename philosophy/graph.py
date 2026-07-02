@@ -49,6 +49,7 @@ class PhiloGraph:
         self._asserts_idx: dict[str, list[tuple[str, str]]] | None = None
         self._opposes_idx: dict[str, list[str]] | None = None
         self._adj_idx: dict[str, list[tuple[str, str]]] | None = None
+        self._value_idx: dict[str, list[tuple[str, int, float]]] | None = None
 
     # -- 기본 조회 ----------------------------------------------------------
     def node(self, node_id: str) -> dict | None:
@@ -98,6 +99,33 @@ class PhiloGraph:
                     idx.setdefault(tgt, []).append(src)
             self._opposes_idx = idx
         return self._opposes_idx
+
+    @property
+    def value_index(self) -> dict[str, list[tuple[str, int, float]]]:
+        """claim_id → [(value_key, +1|-1, weight)] — Schwartz 가치층(promotes/demotes).
+
+        value_key 는 'self_direction' 형태(value:: 접두사 제거). Graph-Project
+        Plan 3 이 구체화한 value_signature 엣지 597건이 원천.
+        """
+        if self._value_idx is None:
+            idx: dict[str, list[tuple[str, int, float]]] = {}
+            for e in self.edges:
+                r = e.get("relation")
+                if r not in ("promotes", "demotes"):
+                    continue
+                tgt = e.get("target") or ""
+                tn = self.nodes.get(tgt)
+                if tn is None or tn.get("type") != "value":
+                    continue
+                key = tgt.split("::", 1)[-1]
+                sign = 1 if r == "promotes" else -1
+                try:
+                    w = float(e.get("weight") or 0.5)
+                except (TypeError, ValueError):
+                    w = 0.5
+                idx.setdefault(e.get("source"), []).append((key, sign, w))
+            self._value_idx = idx
+        return self._value_idx
 
     @property
     def adj_index(self) -> dict[str, list[tuple[str, str]]]:

@@ -1,12 +1,14 @@
-"""Diagnosis 빌더 — Graph-Project C_RAG(rag/stages/diagnose.py) 그대로 이식.
+"""Diagnosis 빌더 — Graph-Project C_RAG(rag/stages/diagnose.py) 이식.
 
 build_diagnosis: bundle들 + 철학자 랭킹 → Diagnosis
 format_diagnosis: Diagnosis → 사람이 읽는 진단 리포트(LLM user content 겸 근거 패널)
+원본과의 차이: Schwartz 가치 프로파일(value_scores — Plan 3 다운스트림) 반영.
 """
 from __future__ import annotations
 
 from collections import Counter
 
+from philosophy import values as schwartz
 from philosophy.schema import Diagnosis, PhilosopherMatch, RetrievalBundle, RetrievedNode
 
 
@@ -25,6 +27,7 @@ def build_diagnosis(
     sub_claims: list[str],
     bundles: list[RetrievalBundle],
     top_philosophers: list[PhilosopherMatch],
+    value_scores: dict | None = None,
 ) -> Diagnosis:
     comms = [b.predicted_community for b in bundles if b.predicted_community >= 0]
     pred_comm = Counter(comms).most_common(1)[0][0] if comms else -1
@@ -42,6 +45,7 @@ def build_diagnosis(
         school_concepts=school,
         similar_claims=similar,
         contrasting_claims=contrast,
+        value_scores=value_scores or {},
     )
 
 
@@ -73,4 +77,8 @@ def format_diagnosis(d: Diagnosis) -> str:
         L.append("\n## 당신과 대비되는 입장 (opposes)")
         for i, n in enumerate(d.contrasting_claims, 1):
             L.append(f"{i}. **{n.label}**  ·  `{n.id}`")
+
+    section = schwartz.format_values_section(d.value_scores)
+    if section:
+        L.append(section)
     return "\n".join(L)

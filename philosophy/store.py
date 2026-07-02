@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS philo_diagnoses (
     query             TEXT,
     top_philosophers  TEXT NOT NULL,
     summary           TEXT,
+    value_scores      TEXT,
     updated_at        TEXT NOT NULL
 );
 """
@@ -38,6 +39,11 @@ def _connect(db_path: str | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(str(p))
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
+    # 구버전 테이블 마이그레이션 — value_scores(Schwartz) 컬럼이 없으면 추가(멱등)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(philo_diagnoses)")}
+    if "value_scores" not in cols:
+        conn.execute("ALTER TABLE philo_diagnoses ADD COLUMN value_scores TEXT")
+        conn.commit()
     return conn
 
 
@@ -50,19 +56,22 @@ def init_db(db_path: str | None = None) -> None:
 def save_diagnosis(username: str, *, query: str,
                    top_philosophers: list[dict],
                    summary: str | None = None,
+                   value_scores: dict | None = None,
                    db_path: str | None = None) -> None:
-    """최근 진단 저장(있으면 갱신). top_philosophers=[{id,label,score,n_support}]."""
+    """최근 진단 저장(있으면 갱신). value_scores = Schwartz 10차원 raw."""
     with closing(_connect(db_path)) as conn:
         conn.execute(
             """
-            INSERT INTO philo_diagnoses(username, query, top_philosophers, summary, updated_at)
-            VALUES(?,?,?,?,?)
+            INSERT INTO philo_diagnoses(username, query, top_philosophers, summary,
+                                        value_scores, updated_at)
+            VALUES(?,?,?,?,?,?)
             ON CONFLICT(username) DO UPDATE SET
               query=excluded.query, top_philosophers=excluded.top_philosophers,
-              summary=excluded.summary, updated_at=excluded.updated_at
+              summary=excluded.summary, value_scores=excluded.value_scores,
+              updated_at=excluded.updated_at
             """,
             (username, query, json.dumps(top_philosophers, ensure_ascii=False),
-             summary, _now()),
+             summary, json.dumps(value_scores or {}, ensure_ascii=False), _now()),
         )
         conn.commit()
 
@@ -73,10 +82,15 @@ def get_diagnosis(username: str, *, db_path: str | None = None) -> dict | None:
             "SELECT * FROM philo_diagnoses WHERE username=?", (username,)).fetchone()
     if row is None:
         return None
+    try:
+        vscores = json.loads(row["value_scores"] or "{}")
+    except (TypeError, json.JSONDecodeError):
+        vscores = {}
     return {
         "query": row["query"],
         "top_philosophers": json.loads(row["top_philosophers"]),
         "summary": row["summary"],
+        "value_scores": vscores,
         "updated_at": row["updated_at"],
     }
 
