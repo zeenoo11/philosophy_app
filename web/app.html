@@ -27,14 +27,20 @@
   .brand em{font-style:normal;color:var(--vermilion)}
   .back{font-size:.82rem;color:var(--mist);letter-spacing:0;font-family:var(--body)}
   .back:hover{color:var(--paper)}
-  .hint{font-size:.78rem;color:var(--mist)}
-  .hint b{color:var(--paper);font-weight:500}
-  .hint .v{color:var(--vermilion)} .hint .a{color:var(--aegean)}
-  .right{display:flex;align-items:center;gap:16px}
+  .svc-tabs{display:flex;gap:8px}
+  .svc-tab{border:1px solid var(--line);border-radius:999px;padding:5px 14px;
+           font-size:.8rem;color:var(--mist);white-space:nowrap;transition:color .2s,border-color .2s}
+  .svc-tab:hover{color:var(--paper)}
+  .svc-tab.saju:hover{border-color:var(--vermilion)}
+  .svc-tab.philo:hover{border-color:var(--aegean)}
+  .svc-tab.active{color:var(--paper)}
+  .svc-tab.saju.active{border-color:var(--vermilion)}
+  .svc-tab.philo.active{border-color:var(--aegean)}
+  .right{display:flex;align-items:center;gap:12px}
   .me-btn{border:1px solid var(--vermilion);border-radius:2px;padding:5px 14px;
           font-size:.8rem;color:var(--paper);white-space:nowrap;transition:background .2s}
   .me-btn:hover{background:var(--vermilion)}
-  @media(max-width:680px){.hint{display:none}}
+  @media(max-width:680px){.brand .back{display:none}}
 
   main{height:calc(100% - var(--nav-h));position:relative}
   iframe{width:100%;height:100%;border:0;display:block;opacity:0;transition:opacity .4s ease}
@@ -58,8 +64,11 @@
 
 <nav>
   <span class="brand"><a href="/">哲<em>命</em></a><a class="back" href="/">← 소개로 돌아가기</a></span>
+  <span class="svc-tabs" role="tablist" aria-label="서비스 전환 (새 대화로 시작)">
+    <a class="svc-tab saju" id="tab-saju" href="/app?service=saju" title="사주 운세로 새 대화">🔮 사주 운세</a>
+    <a class="svc-tab philo" id="tab-philo" href="/app?service=philo" title="철학 탐구로 새 대화">🧭 철학 탐구</a>
+  </span>
   <span class="right">
-    <span class="hint">좌측 상단 프로필에서 <b><span class="v">🔮 사주 운세</span> / <span class="a">🧭 철학 탐구</span></b> 를 전환할 수 있어요</span>
     <a class="me-btn" href="/me" title="저장된 사주·철학·통합 리포트 다시 보기 (채팅과 같은 계정)">📖 내 기록</a>
   </span>
 </nav>
@@ -80,6 +89,67 @@
     // Chainlit 앱 부트스트랩 여유를 약간 두고 전환
     setTimeout(() => { frame.classList.add("ready"); loading.classList.add("done"); }, 350);
   });
+
+  // ── ?service=saju|philo — 랜딩에서 고른 서비스로 프로필 자동 전환 ──────────
+  // Chainlit 은 URL 프로필 지정을 지원하지 않아, same-origin iframe 에서
+  // 프로필 콤보박스(Radix)를 키보드 시퀀스로 조작한다. 로그인 화면이 먼저면
+  // 콤보박스 등장(=로그인 완료)까지 기다린다.
+  const SERVICE = new URLSearchParams(location.search).get("service");
+  const TARGET = { saju: "사주 운세", philo: "철학 탐구" }[SERVICE] || null;
+  if (TARGET) document.getElementById("tab-" + SERVICE)?.classList.add("active");
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  async function waitFor(fn, timeout = 90000, interval = 300) {
+    const t0 = Date.now();
+    for (;;) {
+      let v = null;
+      try { v = fn(); } catch (e) { /* iframe 문서 교체 중 */ }
+      if (v) return v;
+      if (Date.now() - t0 > timeout) return null;
+      await sleep(interval);
+    }
+  }
+
+  async function switchProfile(target) {
+    const d = () => frame.contentDocument;
+    const w = () => frame.contentWindow;
+    const key = (el, k) => el.dispatchEvent(new (w()).KeyboardEvent("keydown", { key: k, code: k, bubbles: true }));
+    const current = () => d()?.querySelector('[role="combobox"]');
+    // Chainlit 이 콤보박스에 리스너를 붙이기 전의 키 입력은 무시된다 —
+    // 등장 직후 잠시 기다리고, 성공 확인까지 최대 3회 재시도한다.
+    const cb0 = await waitFor(current);
+    if (!cb0) return;                             // 로그인 미완 등 — 조용히 포기
+    await sleep(1000);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const cb = current();
+      if (!cb) return;
+      if (cb.textContent.includes(target)) break;
+      cb.focus(); key(cb, "Enter");
+      const opts = await waitFor(() => { const o = [...d().querySelectorAll('[role="option"]')]; return o.length ? o : null; }, 3000, 150);
+      if (opts) {
+        const idx = opts.findIndex(o => o.textContent.includes(target));
+        if (idx < 0) { key(d().activeElement, "Escape"); return; }
+        let cur = opts.findIndex(o => o.getAttribute("aria-selected") === "true" || o.dataset.state === "checked");
+        if (cur < 0) cur = 0;
+        const dir = idx >= cur ? "ArrowDown" : "ArrowUp";
+        for (let i = 0; i < Math.abs(idx - cur); i++) { key(d().activeElement, dir); await sleep(140); }
+        key(d().activeElement, "Enter");
+        // 진행 중 대화가 있으면 '새 채팅' 확인 다이얼로그 — 직행 의도가 명확하므로 진행
+        const confirm = await waitFor(
+          () => [...d().querySelectorAll('[role="dialog"] button, [role="alertdialog"] button')]
+            .find(b => b.textContent.trim() === "확인"), 2000, 150);
+        if (confirm) confirm.click();
+      }
+      await sleep(900);
+      if (current()?.textContent.includes(target)) break;
+    }
+    markActive();
+  }
+  function markActive() {
+    document.querySelectorAll(".svc-tab").forEach(t => t.classList.remove("active"));
+    if (SERVICE) document.getElementById("tab-" + SERVICE)?.classList.add("active");
+  }
+  if (TARGET) frame.addEventListener("load", () => { switchProfile(TARGET); }, { once: true });
 </script>
 </body>
 </html>

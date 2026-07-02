@@ -79,8 +79,17 @@
   /* ── 두 렌즈 ─────────────────────────── */
   .lenses{display:grid;grid-template-columns:1fr auto 1fr;gap:26px;align-items:center;
           padding:56px 0 0;max-width:920px;margin:0 auto}
-  .lens{background:var(--ink-soft);border:1px solid var(--line);border-radius:10px;
-        padding:30px 26px 24px;text-align:center;position:relative;overflow:hidden}
+  .lens{display:block;background:var(--ink-soft);border:1px solid var(--line);border-radius:10px;
+        padding:30px 26px 24px;text-align:center;position:relative;overflow:hidden;
+        transition:border-color .25s,transform .25s;cursor:pointer}
+  .lens:hover{transform:translateY(-3px)}
+  .lens-saju:hover{border-color:var(--vermilion)}
+  .lens-philo:hover{border-color:var(--aegean)}
+  .lens-go{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:.8rem;
+           opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s}
+  .lens:hover .lens-go{opacity:1;transform:none}
+  .lens-saju .lens-go{color:var(--vermilion)}
+  .lens-philo .lens-go{color:var(--aegean)}
   .lens::before{content:"";position:absolute;top:0;left:0;right:0;height:2px}
   .lens-saju::before{background:linear-gradient(90deg,transparent,var(--vermilion),transparent)}
   .lens-philo::before{background:linear-gradient(90deg,transparent,var(--aegean),transparent)}
@@ -213,7 +222,8 @@
   </div>
 
   <div class="lenses">
-    <div class="lens lens-saju rise">
+    <a class="lens lens-saju rise" href="/app?service=saju"
+       aria-label="사주 운세 바로 시작">
       <span class="lens-tag"><b>命</b> · 태어난 순간의 여덟 글자</span>
       <div class="myeongsik" aria-label="사주 명식 예시">
         <div class="pillar"><span class="sipsin">년 · 편관</span><span class="hanja">戊<br>寅</span><span class="kr">무인</span></div>
@@ -222,11 +232,13 @@
         <div class="pillar"><span class="sipsin">시 · 정인</span><span class="hanja">辛<br>亥</span><span class="kr">신해</span></div>
       </div>
       <p class="lens-note">1998년 11월 11일 22:00에 태어난 사람의 실제 명식 —<br>절기·진태양시까지 천문 계산으로 검증한 결정론 엔진의 산출물</p>
-    </div>
+      <span class="lens-go">→ 🔮 사주로 바로 시작</span>
+    </a>
 
     <span class="times" aria-hidden="true">×</span>
 
-    <div class="lens lens-philo rise d1">
+    <a class="lens lens-philo rise d1" href="/app?service=philo"
+       aria-label="철학 탐구 바로 시작">
       <span class="lens-tag"><b>哲</b> · 생각이 놓이는 지식그래프</span>
       <svg class="kgraph" viewBox="0 0 300 232" role="img" aria-label="철학 지식그래프 진단 예시 — 생각에서 유사 주장을 거쳐 철학자로">
         <!-- 엣지: 생각→claim(cosine, 점선) / claim→철학자(asserts, 실선) -->
@@ -255,7 +267,8 @@
         <text class="t-me" x="150" y="224" text-anchor="middle">당신의 생각</text>
       </svg>
       <p class="lens-note">"사랑은 풍요와 결핍을 함께 준다"가 실제로 회수한 철학자들 —<br>SEP 지식그래프 3,600노드에서 유사 주장의 실제 저자를 따라갑니다</p>
-    </div>
+      <span class="lens-go">→ 🧭 철학으로 바로 시작</span>
+    </a>
   </div>
 </header>
 
@@ -273,7 +286,7 @@
         <li>억부·조후·전왕·맹파 — 유파 4종의 관점을 나란히, 갈리는 지점 명시</li>
         <li>인연 매칭 — 후보 궁합 랭킹, 연도 범위에서 Best 사주 역산</li>
       </ul>
-      <a class="svc-go" href="/app">→ 생년월일시로 시작</a>
+      <a class="svc-go" href="/app?service=saju">→ 생년월일시로 시작</a>
     </article>
 
     <article class="svc svc-philo rise d1">
@@ -285,7 +298,7 @@
         <li>유사 주장의 실제 저자(asserts)를 따라 철학자 랭킹 — 원문 인용 근거 동반</li>
         <li>나와 닮은 영혼 — 철학자 분포가 겹치는 사용자 연결</li>
       </ul>
-      <a class="svc-go" href="/app">→ 한 문장의 가치관으로 시작</a>
+      <a class="svc-go" href="/app?service=philo">→ 한 문장의 가치관으로 시작</a>
     </article>
   </div>
 </section>
