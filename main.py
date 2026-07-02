@@ -25,6 +25,12 @@ async def landing() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html", media_type="text/html")
 
 
+@app.get("/app", include_in_schema=False)
+async def chat_shell() -> FileResponse:
+    """哲命 셸(nav) 안에 채팅(/chat iframe)을 임베드한 페이지 — 랜딩 CTA 의 목적지."""
+    return FileResponse(WEB_DIR / "app.html", media_type="text/html")
+
+
 @app.get("/health", include_in_schema=False)
 async def health() -> dict:
     return {"status": "ok"}

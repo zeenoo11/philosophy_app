@@ -1,0 +1,46 @@
+/* 哲命 — Chainlit 채팅 UI를 랜딩(web/index.html)과 같은 무드로.
+   팔레트/변수는 public/theme.json 이 주입하고, 여기서는 폰트 위계와
+   변수로 못 미치는 세부만 오버라이드한다. */
+
+/* 제목·헤딩은 랜딩과 동일한 명조 디스플레이 */
+#root h1, #root h2, #root h3,
+[data-panel-group] h1, [data-panel-group] h2 {
+  font-family: "Gowun Batang", serif !important;
+  letter-spacing: .01em;
+}
+
+/* 본문 폰트 폴백(변수 미적용 요소 대비) */
+body {
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+/* 상단 헤더 — 랜딩 nav 처럼 얇은 괘선 + 반투명 */
+#header {
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / .88);
+  backdrop-filter: blur(10px);
+}
+
+/* 사용자 말풍선 — 한지 위 먹 글씨 느낌은 과해서, 카드톤 + 인주 괘선만 */
+[data-step-type="user_message"] .message-content,
+.user-message {
+  border-left: 2px solid hsl(var(--primary) / .55);
+}
+
+/* 코드/근거 푸터 블록 */
+code, pre {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* 스크롤바 — 청묵 위 미스트 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: hsl(224 24% 22%); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(223 14% 40%); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 임베드(iframe, /app) 모드 — 부모 셸 nav 아래에 이어 보이도록 헤더를 투명화.
+   (헤더 자체는 유지 — 새 채팅·프로필 전환·설정이 여기 있다) */
+html.embedded #header {
+  background: transparent;
+  backdrop-filter: none;
+}

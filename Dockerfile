@@ -36,6 +36,8 @@ COPY engine ./engine
 COPY presets ./presets
 COPY philosophy ./philosophy
 COPY web ./web
+COPY public ./public
+COPY .chainlit ./.chainlit
 COPY app.py main.py saju_service.py philo_service.py chainlit.md ./
 
 # ── 천문력(de421.bsp) 베이크: 런타임 네트워크 없이 절기 계산 ──
