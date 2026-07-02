@@ -43,6 +43,10 @@ COPY app.py main.py saju_service.py philo_service.py chainlit.md ./
 # ── 천문력(de421.bsp) 베이크: 런타임 네트워크 없이 절기 계산 ──
 RUN python -c "from engine.astro import _engine; _engine()"
 
+# ── 철학 graphRAG: 임베딩 모델(ONNX) 베이크 — 런타임 HF 다운로드 제거 ──
+# (노드 임베딩 npz 는 philosophy/data 에 이미 포함 — scripts/build_philo_embeddings.py 산출물)
+RUN python -c "from philosophy.embed import _model; _model()"
+
 EXPOSE 8123
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
   CMD curl -fsS http://localhost:8123/ || exit 1

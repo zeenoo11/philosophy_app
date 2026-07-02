@@ -102,13 +102,17 @@
   .pillar-day .hanja{color:var(--vermilion)}
   .pillar-day .sipsin{color:var(--vermilion)}
 
-  /* 레이더 svg */
-  .radar{width:100%;max-width:300px;margin:0 auto;display:block}
-  .radar .grid{fill:none;stroke:var(--line);stroke-width:1}
-  .radar .spoke{stroke:var(--line);stroke-width:1}
-  .radar .shape{fill:color-mix(in srgb,var(--aegean) 30%,transparent);stroke:var(--aegean);stroke-width:2;stroke-linejoin:round}
-  .radar .dot{fill:var(--aegean)}
-  .radar text{fill:var(--mist);font-family:var(--body);font-size:12.5px}
+  /* 지식그래프 svg */
+  .kgraph{width:100%;max-width:300px;margin:0 auto;display:block}
+  .kgraph .e-cos{stroke:var(--aegean);stroke-width:1.5;stroke-dasharray:4 4;opacity:.75}
+  .kgraph .e-ast{stroke:var(--line);stroke-width:1.5}
+  .kgraph .n-phil{fill:var(--aegean)}
+  .kgraph .n-claim{fill:none;stroke:var(--aegean);stroke-width:2}
+  .kgraph .n-me{fill:var(--paper);stroke:var(--aegean);stroke-width:2}
+  .kgraph .t-phil{fill:var(--paper);font-family:var(--body);font-size:13px;font-weight:500}
+  .kgraph .t-claim{fill:var(--mist);font-family:var(--body);font-size:11.5px}
+  .kgraph .t-rel{fill:var(--mist);font-family:var(--mono);font-size:10px;opacity:.85}
+  .kgraph .t-me{fill:var(--paper);font-family:var(--body);font-size:13px}
 
   /* ── 섹션 공통 ───────────────────────── */
   .section{padding:96px 0 0}
@@ -222,31 +226,34 @@
     <span class="times" aria-hidden="true">×</span>
 
     <div class="lens lens-philo rise d1">
-      <span class="lens-tag"><b>哲</b> · 살아온 생각의 일곱 좌표</span>
-      <svg class="radar" viewBox="-26 -20 292 278" role="img" aria-label="7축 철학 좌표 레이더 차트">
-        <polygon class="grid" points="120,20 198.2,57.7 217.5,142.3 163.4,210.1 76.6,210.1 22.5,142.3 41.8,57.7"/>
-        <polygon class="grid" points="120,70 159.1,88.8 168.7,131.1 141.7,165.1 98.3,165.1 71.3,131.1 80.9,88.8"/>
-        <line class="spoke" x1="120" y1="120" x2="120" y2="20"/>
-        <line class="spoke" x1="120" y1="120" x2="198.2" y2="57.7"/>
-        <line class="spoke" x1="120" y1="120" x2="217.5" y2="142.3"/>
-        <line class="spoke" x1="120" y1="120" x2="163.4" y2="210.1"/>
-        <line class="spoke" x1="120" y1="120" x2="76.6" y2="210.1"/>
-        <line class="spoke" x1="120" y1="120" x2="22.5" y2="142.3"/>
-        <line class="spoke" x1="120" y1="120" x2="41.8" y2="57.7"/>
-        <polygon class="shape" points="120,40 190.4,63.9 168.7,131.1 146,174.1 98.3,165.1 81,128.9 65.3,76.4"/>
-        <circle class="dot" cx="120" cy="40" r="3"/><circle class="dot" cx="190.4" cy="63.9" r="3"/>
-        <circle class="dot" cx="168.7" cy="131.1" r="3"/><circle class="dot" cx="146" cy="174.1" r="3"/>
-        <circle class="dot" cx="98.3" cy="165.1" r="3"/><circle class="dot" cx="81" cy="128.9" r="3"/>
-        <circle class="dot" cx="65.3" cy="76.4" r="3"/>
-        <text x="120" y="8" text-anchor="middle">주체</text>
-        <text x="206" y="50">이성</text>
-        <text x="226" y="147">이타</text>
-        <text x="170" y="226" text-anchor="middle">낙관</text>
-        <text x="70" y="226" text-anchor="middle">미래</text>
-        <text x="14" y="147" text-anchor="end">초월</text>
-        <text x="34" y="50" text-anchor="end">순응</text>
+      <span class="lens-tag"><b>哲</b> · 생각이 놓이는 지식그래프</span>
+      <svg class="kgraph" viewBox="0 0 300 232" role="img" aria-label="철학 지식그래프 진단 예시 — 생각에서 유사 주장을 거쳐 철학자로">
+        <!-- 엣지: 생각→claim(cosine, 점선) / claim→철학자(asserts, 실선) -->
+        <line class="e-cos" x1="150" y1="196" x2="78"  y2="128"/>
+        <line class="e-cos" x1="150" y1="196" x2="222" y2="128"/>
+        <line class="e-ast" x1="78"  y1="128" x2="62"  y2="52"/>
+        <line class="e-ast" x1="78"  y1="128" x2="150" y2="44"/>
+        <line class="e-ast" x1="222" y1="128" x2="150" y2="44"/>
+        <line class="e-ast" x1="222" y1="128" x2="238" y2="52"/>
+        <!-- 철학자 노드 -->
+        <circle class="n-phil" cx="62"  cy="52" r="7"/>
+        <circle class="n-phil" cx="150" cy="44" r="7"/>
+        <circle class="n-phil" cx="238" cy="52" r="7"/>
+        <text class="t-phil" x="62"  y="34" text-anchor="middle">Singer</text>
+        <text class="t-phil" x="150" y="26" text-anchor="middle">Nagel</text>
+        <text class="t-phil" x="238" y="34" text-anchor="middle">Velleman</text>
+        <!-- claim 노드 -->
+        <circle class="n-claim" cx="78"  cy="128" r="5"/>
+        <circle class="n-claim" cx="222" cy="128" r="5"/>
+        <text class="t-claim" x="66"  y="116" text-anchor="middle">사랑은 풍요</text>
+        <text class="t-claim" x="234" y="116" text-anchor="middle">사랑은 결핍</text>
+        <text class="t-rel" x="106" y="86" text-anchor="middle">asserts</text>
+        <text class="t-rel" x="107" y="170" text-anchor="middle">유사도 .58</text>
+        <!-- 사용자 생각 노드 -->
+        <circle class="n-me" cx="150" cy="196" r="9"/>
+        <text class="t-me" x="150" y="224" text-anchor="middle">당신의 생각</text>
       </svg>
-      <p class="lens-note">스토아주의의 실제 7축 좌표 — 당신의 대화가 이 위에 겹쳐지고,<br>12개 사상 중 가장 닮은 철학을 찾습니다</p>
+      <p class="lens-note">"사랑은 풍요와 결핍을 함께 준다"가 실제로 회수한 철학자들 —<br>SEP 지식그래프 3,600노드에서 유사 주장의 실제 저자를 따라갑니다</p>
     </div>
   </div>
 </header>
@@ -270,14 +277,14 @@
 
     <article class="svc svc-philo rise d1">
       <h3>🧭 철학 탐구</h3>
-      <p class="svc-sub">대화형 가치관 분석 + 사상 매칭 + 사용자 연결</p>
+      <p class="svc-sub">graphRAG 가치관 진단 — PhiloGraph 지식그래프</p>
       <ul>
-        <li>21개의 질문으로 이어지는 대화 — 답변마다 축 점수의 근거를 공개</li>
-        <li>7축 좌표 — 주체성 · 판단 근거 · 지향점 · 세계관 · 시간 · 형이상학 · 사회성</li>
-        <li>스토아주의부터 실존주의까지, 12개 사상과의 일치율 매칭</li>
-        <li>나와 닮은 영혼 — 사용자 간 철학 유사도 랭킹</li>
+        <li>생각을 핵심 명제로 분해해 각각 탐색 — 긴 생각도 뭉개지지 않게</li>
+        <li>SEP 지식그래프 3,600노드 · 8,397엣지에서 유사 주장 회수 + 이웃 확장</li>
+        <li>유사 주장의 실제 저자(asserts)를 따라 철학자 랭킹 — 원문 인용 근거 동반</li>
+        <li>나와 닮은 영혼 — 철학자 분포가 겹치는 사용자 연결</li>
       </ul>
-      <a class="svc-go" href="/app">→ 첫 질문에 답하며 시작</a>
+      <a class="svc-go" href="/app">→ 한 문장의 가치관으로 시작</a>
     </article>
   </div>
 </section>
@@ -290,12 +297,12 @@
       <div class="creed-item rise">
         <span class="hanja-key">分</span>
         <h4>계산과 해석의 분리</h4>
-        <p>팔자·대운·괘는 결정론으로 산출하고 천문 oracle 로 교차검증합니다. 철학 좌표도 답변별 점수의 평균 — 해석이 계산을 오염시키지 않습니다.</p>
+        <p>팔자·대운·괘는 결정론으로 산출하고 천문 oracle 로 교차검증합니다. 철학자 랭킹도 그래프 회수의 결정론 집계 — LLM 서술이 계산을 오염시키지 않습니다.</p>
       </div>
       <div class="creed-item rise d1">
         <span class="hanja-key">據</span>
         <h4>모든 풀이에 근거</h4>
-        <p>사주 리포트의 모든 문장은 출처(trace)를 동반하고, 리포트 아래 「이 풀이의 근거」 푸터로 사용된 값을 공개합니다. 철학 리포트도 같은 방식입니다.</p>
+        <p>사주 리포트의 모든 문장은 출처(trace)를 동반하고, 리포트 아래 「이 풀이의 근거」 푸터로 사용된 값을 공개합니다. 철학 진단은 SEP 원문 인용을 근거로 답합니다.</p>
       </div>
       <div class="creed-item rise d2">
         <span class="hanja-key">竝</span>
@@ -314,7 +321,7 @@
     나와 닮은 사람을 두 렌즈 모두로 찾아보세요.</p>
   <div class="connect-badges rise d3">
     <span class="badge badge-saju"><b>💘 궁합 매칭</b> — 일간·일지·띠·오행보완 (결정론)</span>
-    <span class="badge badge-philo"><b>🤝 닮은 영혼</b> — 7축 좌표 유클리드 유사도 (결정론)</span>
+    <span class="badge badge-philo"><b>🤝 닮은 영혼</b> — top 철학자 분포 코사인 (결정론)</span>
   </div>
 </section>
 

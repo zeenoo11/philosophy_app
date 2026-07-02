@@ -43,8 +43,18 @@ async def chat_profiles():
         cl.ChatProfile(
             name=PROFILE_PHILO,
             markdown_description=(
-                "**대화로 찾는 나의 철학** — 7축 가치관 분석.\n"
-                "닮은 철학 사상 매칭 · 철학적 좌표 · 나와 닮은 사용자 연결"),
+                "**가치관을 철학 지형에 위치시키는 graphRAG 진단** — SEP 지식그래프 3,600노드.\n"
+                "명제 분해 · 유사 주장 회수 · 실제 저자 기준 철학자 랭킹 · 원문 인용 근거"),
+            starters=[
+                cl.Starter(label="사랑",
+                           message="나는 사랑이 삶을 풍요롭게 하지만 동시에 결핍과 고통도 준다고 생각한다."),
+                cl.Starter(label="정의",
+                           message="사회의 정의는 가장 불리한 사람의 처지를 개선할 때에만 정당하다."),
+                cl.Starter(label="자유",
+                           message="개인의 자유는 타인에게 해를 끼치지 않는 한 무엇이든 할 수 있어야 한다."),
+                cl.Starter(label="지식",
+                           message="확실한 지식은 감각 경험이 아니라 이성적 추론에서 나온다."),
+            ],
         ),
     ]
 
@@ -71,7 +81,9 @@ async def on_message(message: cl.Message):
 
 @cl.on_settings_update
 async def on_settings_update(settings):
-    if not _is_philo():  # 설정 위젯(성별·진태양시)은 사주 프로필 전용
+    if _is_philo():  # 철학: top-N·분해·회수만 / 사주: 성별·진태양시
+        await philo.on_settings(settings)
+    else:
         await saju.on_settings(settings)
 
 

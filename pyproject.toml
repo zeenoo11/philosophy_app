@@ -10,6 +10,8 @@ dependencies = [
     "pyyaml>=6.0", # 유파 프리셋 레지스트리 로딩
     "tzdata>=2024.1", # Windows zoneinfo용 IANA tz DB (Asia/Seoul 역사 오프셋)
     "chainlit>=2.11.1", # 채팅 UI (fastapi·httpx 포함 — 랜딩/OpenRouter 겸용)
+    "fastembed>=0.4", # 철학 graphRAG 회수 임베딩 (all-MiniLM-L6-v2 ONNX — torch 불필요)
+    "numpy>=1.26", # 임베딩 캐시(npz)·cosine
 ]
 
 [project.optional-dependencies]
@@ -35,7 +37,7 @@ markers = [
     "astro: 천문 계산(skyfield) — 에페메리스 필요",
     "slow: 느린 테스트 (광범위 스윕)",
     "llm: LLM 호출 (외부/비용) — RUN_LLM_TESTS=1 로 활성화",
-    "philosophy: 철학 분석 서비스 (매칭·저장 — 결정론)",
+    "philosophy: 철학 graphRAG (그래프·분해·회수·저장 — LLM 미호출)",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 
