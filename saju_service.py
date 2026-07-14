@@ -291,9 +291,27 @@ def _md_best(res: dict, y0: int, y1: int) -> str:
     return "\n".join(lines)
 
 
+def _viewing() -> str | None:
+    """지금 남의 사주를 보는 중이면 그 라벨(이름 또는 생일) — 아니면 None."""
+    try:
+        return cl.user_session.get("viewing_label")
+    except Exception:  # noqa: BLE001 — Chainlit 컨텍스트 밖(테스트 등)
+        return None
+
+
 def _menu_actions() -> list[cl.Action]:
-    acts = [cl.Action(name="category", payload={"kind": k}, label=label, tooltip=desc)
-            for (k, label, desc) in catalog()]
+    acts: list[cl.Action] = []
+    if _viewing():
+        acts.append(cl.Action(name="back_to_me", payload={},
+                              label=t("↩️ 내 사주로 돌아가기", "↩️ Back to My Chart"),
+                              tooltip=t("보던 사주를 닫고 내 사주 기준으로 돌아가요",
+                                        "Close this chart and return to your own")))
+    acts += [cl.Action(name="category", payload={"kind": k}, label=label, tooltip=desc)
+             for (k, label, desc) in catalog()]
+    acts.append(cl.Action(name="view_other", payload={},
+                          label=t("👀 다른 사주 보기", "👀 View Another Chart"),
+                          tooltip=t("가족·친구 등 다른 사람의 사주를 내 사주는 그대로 둔 채 봐요",
+                                    "Look up someone else's chart — yours stays saved")))
     acts.append(cl.Action(name="match", payload={},
                           label=t("💘 인연 찾기", "💘 Find a Match"),
                           tooltip=t("후보들과 궁합 순위 / 연도 범위로 Best 사주 역산",
@@ -315,10 +333,14 @@ def _menu_actions() -> list[cl.Action]:
 
 
 def _save_report(kind: str, rep) -> None:
-    """로그인 사용자의 리포트를 히스토리에 저장 — /me 개인 보고서에서 재확인."""
+    """로그인 사용자의 리포트를 히스토리에 저장 — /me 개인 보고서에서 재확인.
+
+    남의 사주를 보는 중이면 제목에 [라벨] 을 붙여 누구의 리포트인지 남긴다.
+    """
     user = _username()
     if user:
-        reports_store.save_saju_report(user, kind=kind, title=rep.title,
+        title = f"[{_viewing()}] {rep.title}" if _viewing() else rep.title
+        reports_store.save_saju_report(user, kind=kind, title=title,
                                        body=rep.text, preset_id=_preset())
 
 
@@ -372,11 +394,15 @@ def _preset_actions() -> list[cl.Action]:
 
 
 def _menu_tail() -> str:
-    """메뉴 메시지에 붙는 현재 해석 방식 안내 한 줄."""
-    return t(f"\n\n> 🧭 지금 해석 방식: **{_preset_label(_preset())}** — "
+    """메뉴 메시지에 붙는 현재 해석 방식(+남의 사주 열람 중이면 그 안내) 한 줄."""
+    tail = t(f"\n\n> 🧭 지금 해석 방식: **{_preset_label(_preset())}** — "
              "'방식'이라고 입력하거나 버튼으로 변경",
              f"\n\n> 🧭 Current interpretation style: **{_preset_label(_preset())}** — "
              "type 'style' or use the button to change")
+    if _viewing():
+        tail += t(f"\n> 👀 지금 보는 사주: **{_viewing()}** (내 사주 아님)",
+                  f"\n> 👀 Now viewing: **{_viewing()}** (not your own)")
+    return tail
 
 
 def _clean_md(text: str) -> str:
@@ -397,6 +423,8 @@ def _gender() -> str | None:
     g = cl.user_session.get("gender")
     if g in ("남", "여"):
         return g
+    if _viewing():  # 남의 사주 — 내 설정(⚙️) 성별로 폴백하면 안 된다
+        return None
     s = cl.user_session.get("settings") or {}
     g = _GENDER_NORM.get(s.get("gender") or "")
     return g if g in ("남", "여") else None
@@ -464,12 +492,31 @@ def _chart_md_for(birth: BirthInput, preset_id: str):
     return result, chart
 
 
-async def _show_for_birth(birth: BirthInput):
+async def _show_for_birth(birth: BirthInput, *, mine: bool = True, label: str | None = None):
+    """차트 + '전체 운세 한눈에' 표시.
+
+    mine=True  — 내 사주: 세션·프로필에 저장(로그인 시), 복귀용 백업(my_birth 등) 갱신.
+    mine=False — 남의 사주 보기: 내 프로필은 건드리지 않고 활성 사주만 바꾼다.
+                 배너로 누구의 사주인지 명시, ↩️ 버튼으로 언제든 복귀.
+    """
     cl.user_session.set("birth", birth)
-    user = _username()
-    if user:  # 로그인 사용자는 본인 사주를 저장(다음 방문 시 자동 로드)
-        store.save_profile(user, birth, gender=_gender())
+    if mine:
+        cl.user_session.set("viewing_label", None)
+        cl.user_session.set("my_birth", birth)
+        cl.user_session.set("my_gender", cl.user_session.get("gender"))
+        user = _username()
+        if user:  # 로그인 사용자는 본인 사주를 저장(다음 방문 시 자동 로드)
+            store.save_profile(user, birth, gender=_gender())
+    else:
+        cl.user_session.set("viewing_label", label or _fmt_birth(birth))
     result, chart = _chart_md_for(birth, _preset())
+    if not mine:
+        chart = t(f"> 👀 지금 보는 사주: **{_viewing()}** — 내 사주가 아니에요. "
+                  "아래 메뉴의 리포트도 이 사주 기준으로 나가요. "
+                  "(↩️ 버튼으로 내 사주 복귀)\n\n",
+                  f"> 👀 Now viewing: **{_viewing()}** — not your own chart. "
+                  "Reports from the menu below follow this chart. "
+                  "(↩️ button returns to yours)\n\n") + chart
     await _send(chart)
     # 사주 입력 직후 '해석 방식'을 먼저 받는다(간편 3종). 고른 뒤 카테고리 메뉴로 이어진다.
     await _send(_md_intro(result), actions=_simple_preset_actions())
@@ -769,6 +816,41 @@ async def on_preset(action: cl.Action):
                 + _menu_tail(), actions=_menu_actions())
 
 
+# ── 다른 사람 사주 보기 ──────────────────────────────────────────────────
+async def _ask_other_birth():
+    cl.user_session.set("pending", "view_other")
+    await _send(t("👀 **다른 사람 사주 보기** — 그 사람의 생년월일시를 입력해주세요. "
+                  "예: `엄마 1965-03-02 07:30 여` (이름·성별은 붙이면 좋고, 음력이면 `음력`)\n"
+                  "*내 사주는 그대로 저장돼 있어요 — 언제든 ↩️ 버튼으로 돌아옵니다.*",
+                  "👀 **View another chart** — enter that person's birth date & time. "
+                  "e.g. `Mom 1965-03-02 07:30 female` (name & gender help; add `lunar` "
+                  "for lunar dates)\n*Your own chart stays saved — the ↩️ button brings "
+                  "it back anytime.*"))
+
+
+@cl.action_callback("view_other")
+async def on_view_other(action: cl.Action):
+    _sync_lang()
+    await _ask_other_birth()
+
+
+@cl.action_callback("back_to_me")
+async def on_back_to_me(action: cl.Action):
+    _sync_lang()
+    cl.user_session.set("viewing_label", None)
+    my_birth = cl.user_session.get("my_birth")
+    cl.user_session.set("gender", cl.user_session.get("my_gender"))
+    if not my_birth:
+        cl.user_session.set("birth", None)
+        await _send(t("↩️ 돌아왔어요. 아직 내 사주가 없네요 — 생년월일시를 입력해주세요. "
+                      "예: `1998-11-11 22:00 남`",
+                      "↩️ Back. You haven't entered your own chart yet — please type "
+                      "your birth date & time. e.g. `1998-11-11 22:00 male`"))
+        return
+    await _send(t("↩️ 내 사주로 돌아왔어요.", "↩️ Back to your own chart."))
+    await _show_for_birth(my_birth)
+
+
 # ── 인연 찾기(궁합 매칭) ──────────────────────────────────────────────────
 @cl.action_callback("match")
 async def on_match(action: cl.Action):
@@ -880,6 +962,14 @@ async def on_message(message: cl.Message):
                                        label=t("📊 순위 보기", "📊 Show Ranking"))])
         return
 
+    # 다른 사람 사주 보기 — 생일 입력 대기 (내 프로필은 건드리지 않는다)
+    if cl.user_session.get("pending") == "view_other" and birth:
+        cl.user_session.set("pending", None)
+        cl.user_session.set("birth_info", info)
+        cl.user_session.set("gender", _parse_gender(text))  # 그 사람 성별(없으면 None)
+        await _show_for_birth(birth, mine=False, label=_extract_label(text))
+        return
+
     # 인연 찾기 — 연도 범위 대기 (예: '1990 1995')
     if cl.user_session.get("pending") == "match_range":
         years = [int(y) for y in re.findall(r"(?:19|20)\d{2}", text)]
@@ -909,6 +999,11 @@ async def on_message(message: cl.Message):
     # 새 생년월일시 → (성별 확인 후) 차트 + 메뉴
     if birth:
         cl.user_session.set("birth_info", info)
+        # 남의 사주를 보던 중에 또 생일이 오면 — 내 프로필을 덮지 않고 그 사람 것으로 본다
+        if _viewing():
+            cl.user_session.set("gender", _parse_gender(text))
+            await _show_for_birth(birth, mine=False, label=_extract_label(text))
+            return
         g = _parse_gender(text)
         if g:
             cl.user_session.set("gender", g)
@@ -917,6 +1012,12 @@ async def on_message(message: cl.Message):
             await _ask_gender()
             return
         await _show_for_birth(birth)
+        return
+
+    # 다른 사람 사주 보기 — 타이핑 트리거
+    if re.search(r"다른\s*사(주|람)|남의\s*사주|지인\s*사주|someone\s*else|another\s*(person|chart)",
+                 text, re.I):
+        await _ask_other_birth()
         return
 
     # 해석 방식(유파) 선택 열기

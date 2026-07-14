@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 
 import chainlit as cl
+from starlette.requests import cookie_parser
 
 import fusion
 import mdutil
@@ -44,6 +45,21 @@ def _lang() -> str:
 def _sync_lang() -> None:
     """핸들러 진입 시 세션 언어를 contextvar 에 반영 — 모든 위임 전에 호출."""
     i18n.set_lang(_lang())
+
+
+def _cookie_lang() -> str | None:
+    """접속 요청 쿠키(cm_lang)의 언어 — 랜딩/셸 KO·EN 토글이 심는다.
+
+    프로필 전환 등으로 새 세션이 생겨도 on_chat_start 가 이 값을 다시 읽으므로,
+    첫 웰컴 메시지부터 선택한 언어로 생성된다(🌐 버튼 재전송 방식의 보완).
+    """
+    try:
+        environ = cl.context.session.environ or {}
+        raw = environ.get("HTTP_COOKIE") or ""
+        v = cookie_parser(raw).get("cm_lang")
+        return v if v in ("ko", "en") else None
+    except Exception:  # noqa: BLE001 — 쿠키는 어디까지나 힌트
+        return None
 
 
 @cl.set_chat_profiles
@@ -84,6 +100,10 @@ def _is_philo() -> bool:
 
 @cl.on_chat_start
 async def on_chat_start():
+    if not cl.user_session.get("lang"):
+        ck = _cookie_lang()
+        if ck:
+            cl.user_session.set("lang", ck)
     _sync_lang()
     if _is_philo():
         await philo.start()

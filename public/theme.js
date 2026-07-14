@@ -5,6 +5,17 @@ if (window.self !== window.top) {
   document.documentElement.classList.add("embedded");
 }
 
+// ①-b 언어 쿠키 동기화 — 랜딩/셸 토글이 localStorage("cm.lang")에 남긴 선택을
+//     서버가 읽는 쿠키(cm_lang)로 복사한다(웹소켓 연결 전에 실행됨). /chat 직접
+//     진입이나 과거에 토글만 해둔 경우를 커버 — on_chat_start 가 첫 메시지부터
+//     이 언어로 생성한다.
+try {
+  const l = localStorage.getItem("cm.lang");
+  if (l === "en" || l === "ko") {
+    document.cookie = "cm_lang=" + l + "; path=/; max-age=31536000; SameSite=Lax";
+  }
+} catch (e) { /* 사생활 모드 등 */ }
+
 // ② 로그인 화면 안내 — 계정은 이메일이 아니라 '아이디'이고, 첫 로그인이 곧 가입이다.
 //    (엔진 규약: engine/store.authenticate — 새 아이디면 그 비밀번호로 자동 가입)
 //    Chainlit 기본 라벨을 바꿀 방법이 없어 DOM 에서 멱등 보정한다.

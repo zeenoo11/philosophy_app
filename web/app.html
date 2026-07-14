@@ -204,6 +204,8 @@
     document.getElementById("langKo").classList.toggle("on", lang !== "en");
     document.getElementById("langEn").classList.toggle("on", lang === "en");
     try { localStorage.setItem("cm.lang", lang); } catch (e) {}
+    // 서버(on_chat_start)가 읽는 쿠키 — 새 채팅 세션(프로필 전환 포함)은 첫 메시지부터 이 언어
+    document.cookie = "cm_lang=" + lang + "; path=/; max-age=31536000; SameSite=Lax";
   }
   const qsLang = new URLSearchParams(location.search).get("lang");
   let savedLang = null;
