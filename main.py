@@ -47,9 +47,17 @@ async def health() -> dict:
 
 
 @app.get("/me", include_in_schema=False)
-async def me(credentials: HTTPBasicCredentials | None = Depends(_basic)) -> HTMLResponse:
-    """개인 보고서 — 채팅과 같은 계정(HTTP Basic). 익명 모드면 안내만."""
+async def me(credentials: HTTPBasicCredentials | None = Depends(_basic),
+             lang: str = "ko") -> HTMLResponse:
+    """개인 보고서 — 채팅과 같은 계정(HTTP Basic). 익명 모드면 안내만. ?lang=en 지원."""
     if not os.environ.get("CHAINLIT_AUTH_SECRET"):
+        if lang == "en":
+            return HTMLResponse(
+                "<meta charset='utf-8'><body style='background:#141824;color:#e9e4d6;"
+                "font-family:sans-serif;display:grid;place-items:center;height:100vh'>"
+                "<p>🔐 Login mode is off — set <code>CHAINLIT_AUTH_SECRET</code> in the "
+                "server <code>.env</code> to enable per-account records and this page."
+                "</p></body>", status_code=503)
         return HTMLResponse(
             "<meta charset='utf-8'><body style='background:#141824;color:#e9e4d6;"
             "font-family:sans-serif;display:grid;place-items:center;height:100vh'>"
@@ -60,12 +68,15 @@ async def me(credentials: HTTPBasicCredentials | None = Depends(_basic)) -> HTML
             or not credentials.username
             or not store.verify_user(credentials.username, credentials.password)):
         # 브라우저 인증 프롬프트 유도 (계정은 채팅 로그인과 동일)
-        raise HTTPException(status_code=401, detail="채팅과 같은 아이디/비밀번호로 접속하세요",
+        raise HTTPException(status_code=401,
+                            detail=("Sign in with the same ID/password as the chat"
+                                    if lang == "en" else "채팅과 같은 아이디/비밀번호로 접속하세요"),
                             headers={"WWW-Authenticate": 'Basic realm="cheolmyeong-me"'})
     # timing-safe 비밀번호 비교는 verify_user(PBKDF2 + compare_digest)가 담당.
     from me_page import render_me_page
 
-    return HTMLResponse(render_me_page(credentials.username))
+    return HTMLResponse(render_me_page(credentials.username,
+                                       lang="en" if lang == "en" else "ko"))
 
 
 # Chainlit 을 /chat 하위 경로로 마운트 — 랜딩의 CTA 가 이 경로로 진입한다.

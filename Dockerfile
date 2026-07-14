@@ -38,7 +38,8 @@ COPY philosophy ./philosophy
 COPY web ./web
 COPY public ./public
 COPY .chainlit ./.chainlit
-COPY app.py main.py saju_service.py philo_service.py chainlit.md ./
+COPY app.py main.py saju_service.py philo_service.py me_page.py fusion.py \
+     mdutil.py reports_store.py chainlit.md chainlit_ko.md ./
 
 # ── 천문력(de421.bsp) 베이크: 런타임 네트워크 없이 절기 계산 ──
 RUN python -c "from engine.astro import _engine; _engine()"

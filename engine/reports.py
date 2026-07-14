@@ -12,7 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date as _date
 
-from engine import compatibility, constants as C, lifelong, luck, tojeong
+from engine import compatibility, constants as C, i18n, lifelong, luck, tojeong
+from engine.i18n import branch_en, ganji_en, is_en, stem_en, t, term
 from engine.interpret import interpret
 from engine.narrator import DEFAULT_MODEL, call_llm_json, llm_meta
 from engine.pillars import BirthInput, compute_chart
@@ -42,6 +43,38 @@ _BASE_RULES = (
     "전체적으로 풍부하고 읽는 맛이 있게, 그러나 같은 말 반복은 피하고 섹션마다 다른 근거로.\n"
 )
 
+# 영어 리포트 작성 규칙 — 한글/한자 완전 금지 + 로마자 간지 + 동일한 그라운딩 요구
+_BASE_RULES_EN = (
+    "[Writing rules]\n"
+    "- Write ENTIRELY in natural English. Never use Korean (Hangul) or Chinese (Hanja/CJK) "
+    "characters anywhere — not even in parentheses. Use the romanized names from the confirmed "
+    "data exactly as written (e.g. 'Im-sul', 'Byeong-o').\n"
+    "- Gloss technical terms in plain English on first use, e.g. Wealth star (money you handle), "
+    "Authority (duty and career), Companions (peer energy), useful god (the element that helps "
+    "this chart most).\n"
+    "- Never invent a fact, letter, or number that is not in the confirmed data below. Copy the "
+    "strength verdict, useful god, scores, and chart letters (especially the day branch / spouse "
+    "palace) exactly as given — never substitute different ganji.\n"
+    "- If the confirmed data has a strength verdict ('Strong Day Master' / 'Weak Day Master' / "
+    "'Balanced Day Master'), use that exact phrase at least once and gloss it right after in "
+    "parentheses (e.g. 'Strong Day Master (your core energy runs strong)'). If a useful god is "
+    "given, name its element word (Wood/Fire/Earth/Metal/Water) at least once and explain it "
+    "simply — so readers can verify the basis of the reading.\n"
+    "- Avoid deterministic fatalism and superstition-flavored threats; prefer soft phrasing like "
+    "'tends to', 'favorable for', 'worth caution'.\n"
+    "- **Ground every claim.** No vague generalities or empty blessings. In each section, point "
+    "directly at concrete values from the confirmed data (the eight characters, Ten Gods, "
+    "strength, useful god, year/decade/day ganji, stars, scores), then explain what they mean, "
+    "then give a concrete action — evidence, meaning, action, in that order.\n"
+    "- **Be generous with length.** Keep the section headers exactly as given and write 5-8 full "
+    "sentences per section, ending each section with 1-2 practical tips (specific actions). "
+    "Rich and readable overall, but do not repeat yourself — cite different evidence per section.\n"
+)
+
+
+def _base_rules() -> str:
+    return _BASE_RULES_EN if is_en() else _BASE_RULES
+
 # 본문 한자 노출 가드 (쉬운 말 약속 위반 탐지) — 천간·지지·오행·십신 한자
 _HANJA = set("甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥木火土金水財官印食傷比劫殺")
 
@@ -67,10 +100,53 @@ _HANJA_TO_HANGUL.update({
 
 
 def _dehanja(text: str) -> str:
-    """한자 누출을 한글 음으로 교정(사주 도메인 맵). 맵에 없는 한자는 그대로(가드가 잡음)."""
-    if not text:
-        return text
+    """한자 누출을 한글 음으로 교정(사주 도메인 맵). 맵에 없는 한자는 그대로(가드가 잡음).
+
+    EN 모드에선 교정하지 않는다 — 한자를 한글로 바꾸면 영어 본문에 한글이 섞이는
+    더 나쁜 결과가 되므로, 그대로 두고 그라운딩 가드(CJK 검출)가 잡게 한다.
+    """
+    if not text or is_en():
+        return text or ""
     return "".join(_HANJA_TO_HANGUL.get(ch, ch) for ch in text)
+
+
+# ── EN 표시 헬퍼 — 결정론 값(간지·월·길흉·오행분포)을 영어 표기로 ────────────
+_MONTH_EN = {f"{m}월": n for m, n in zip(range(1, 13),
+             ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))}
+_GILHYUNG_EN = {"좋음": "good", "보통": "fair", "주의": "caution"}
+
+
+def _g(ganji_ko: str) -> str:
+    """간지 표시 — en 로마자('Byeong-o'), ko 원문."""
+    return ganji_en(ganji_ko) if is_en() else ganji_ko
+
+
+def _month_label(ko: str) -> str:
+    return _MONTH_EN.get(ko, ko) if is_en() else ko
+
+
+def _gil(ko: str) -> str:
+    return _GILHYUNG_EN.get(ko, ko) if is_en() else ko
+
+
+def _sinsal_list(names: list[str] | tuple[str, ...]) -> str:
+    """신살 이름 나열 — en 이면 용어 번역, 비면 '없음/none'."""
+    return ", ".join(term(s) for s in names) or t("없음", "none")
+
+
+def _eight(eight_chars: str) -> str:
+    """8글자('무인 계해 임술 신해') — en 이면 각 간지를 로마자로."""
+    if not is_en():
+        return eight_chars
+    return " ".join(ganji_en(p) for p in eight_chars.split())
+
+
+def _dist(dist: dict) -> str:
+    """오행 분포 dict — ko 는 기존 repr 그대로, en 은 'Wood 1 · Fire 0 · …'."""
+    if not is_en():
+        return f"{dist}"
+    return " · ".join(f"{term(k)} {v}" for k, v in dist.items())
 
 
 # 완성된 다섹션 리포트는 보통 1500자+. 이보다 훨씬 짧으면 LLM 이 도중에 끊긴 것(DeepSeek
@@ -108,12 +184,21 @@ _STRENGTHS = ("신강", "신약", "중화")
 
 
 def _forbid(strength: str) -> list[str]:
-    """그라운딩 '모순 금지' 목록 — 확정 강약과 다른 강약 라벨(등장 시 위반)."""
-    return [s for s in _STRENGTHS if s != strength]
+    """그라운딩 '모순 금지' 목록 — 확정 강약과 다른 강약 라벨(등장 시 위반).
+
+    EN 모드에선 영어 라벨('Weak Day Master' 등)로 검사한다 — 본문이 영어이므로.
+    """
+    others = [s for s in _STRENGTHS if s != strength]
+    return [term(s) for s in others] if is_en() else others
 
 
 def _verdict_basis(strength: str, yong: str | None) -> str:
     """근거 푸터용 강약·용신 한 줄."""
+    if is_en():
+        out = f"Day Master strength: {term(strength)}"
+        if yong:
+            out += f" · useful god (most helpful energy): {yong}"
+        return out
     return f"일간 강약: {strength}" + (f" · 용신(가장 이로운 기운): {yong}" if yong else "")
 
 
@@ -136,13 +221,18 @@ def _yongsin_trace_basis(block: dict) -> str | None:
         return None
     adopted = chain.get("adopted")
     skipped = chain.get("skipped") or []
-    ko = lambda n: _POLICY_KO.get(n, n)  # noqa: E731
+    ko = lambda n: term(_POLICY_KO.get(n, n))  # noqa: E731 — en 이면 용어 번역
     if adopted is None:
-        return "용신 취용: 상위 순위 정책이 모두 미성립 — 이 사주엔 뚜렷한 용신이 없음"
+        return t("용신 취용: 상위 순위 정책이 모두 미성립 — 이 사주엔 뚜렷한 용신이 없음",
+                 "Useful-god selection: no higher-priority policy applied — this chart has "
+                 "no clear useful god")
     if skipped:
-        return (f"용신 취용: {'·'.join(ko(s) for s in skipped)}(상위 순위) 미성립 "
-                f"→ {ko(adopted)} 채택")
-    return f"용신 취용: {ko(adopted)}(1순위) 채택"
+        return t(f"용신 취용: {'·'.join(ko(s) for s in skipped)}(상위 순위) 미성립 "
+                 f"→ {ko(adopted)} 채택",
+                 f"Useful-god selection: {' · '.join(ko(s) for s in skipped)} (higher priority) "
+                 f"did not apply → adopted {ko(adopted)}")
+    return t(f"용신 취용: {ko(adopted)}(1순위) 채택",
+             f"Useful-god selection: adopted {ko(adopted)} (first priority)")
 
 
 def _strength_margin_basis(block: dict) -> str | None:
@@ -154,27 +244,33 @@ def _strength_margin_basis(block: dict) -> str | None:
     lo, hi = bands
     dist = min(abs(ratio - lo), abs(ratio - hi))
     if dist <= _BAND_NEAR:
-        return (f"⚠️ 강약 경계 근접 — 통근비율 {ratio:.2f}이(가) 기준선({lo}/{hi})에 "
-                f"{dist:.2f}까지 가까워, 출생시각·진태양시 보정에 따라 강약(따라서 용신)이 "
-                f"달라질 수 있어요")
+        return t(f"⚠️ 강약 경계 근접 — 통근비율 {ratio:.2f}이(가) 기준선({lo}/{hi})에 "
+                 f"{dist:.2f}까지 가까워, 출생시각·진태양시 보정에 따라 강약(따라서 용신)이 "
+                 f"달라질 수 있어요",
+                 f"⚠️ Near the strength boundary — the rooting ratio {ratio:.2f} is within "
+                 f"{dist:.2f} of the threshold ({lo}/{hi}), so birth time or true-solar-time "
+                 f"correction could flip the strength verdict (and thus the useful god)")
     return None
 
 
 _EOKBU_SRC = "정통 자평 · 억부 중심 (자평진전·적천수)"
+_EOKBU_SRC_EN = "Classic Japyeong · Eokbu-centered (Ziping classics)"
 
 
-# 결정론 토글 한글 라벨 — 유파를 바꾸면 '원국(사주 원판)'이 달라지는 항목들(감사 ③).
-_DET_FIELD_KO = {
-    "woryulbunya_theory": "지장간(숨은 기운) 계산법",
-    "sipiunseong_theory": "십이운성(기운의 단계) 계산법",
-    "jasi_rule": "자시(밤 11~1시) 날짜 처리",
-    "true_solar_time": "진태양시 보정",
-    "longitude_deg": "기준 경도",
+# 결정론 토글 라벨(ko, en) — 유파를 바꾸면 '원국(사주 원판)'이 달라지는 항목들(감사 ③).
+_DET_FIELDS = {
+    "woryulbunya_theory": ("지장간(숨은 기운) 계산법", "hidden-stem (jijanggan) method"),
+    "sipiunseong_theory": ("십이운성(기운의 단계) 계산법", "twelve life-stages method"),
+    "jasi_rule": ("자시(밤 11~1시) 날짜 처리", "midnight-hour (Ja-si) date handling"),
+    "true_solar_time": ("진태양시 보정", "true solar time correction"),
+    "longitude_deg": ("기준 경도", "reference longitude"),
 }
+# 하위 호환 별칭(예전 이름) — 한글 라벨 dict
+_DET_FIELD_KO = {f: ko for f, (ko, _en) in _DET_FIELDS.items()}
 
 
 def deterministic_diff(preset_id: str, base: str = DEFAULT_PRESET) -> list[str]:
-    """preset_id 의 결정론 토글이 base(기본=표준)와 다른 항목의 한글 라벨 목록.
+    """preset_id 의 결정론 토글이 base(기본=표준)와 다른 항목의 라벨 목록(현재 언어).
 
     비어 있지 않으면 '강조점 차이'가 아니라 **원국 계산 입력 자체가 달라짐**을 뜻한다
     (지장간→통근→강약, 십이운성→차트 출력 등). 앱이 이를 사용자에게 경고/재렌더한다.
@@ -182,14 +278,14 @@ def deterministic_diff(preset_id: str, base: str = DEFAULT_PRESET) -> list[str]:
     if preset_id == base:
         return []
     a, b = load_preset(base).deterministic, load_preset(preset_id).deterministic
-    return [ko for f, ko in _DET_FIELD_KO.items() if getattr(a, f) != getattr(b, f)]
+    return [t(ko, en) for f, (ko, en) in _DET_FIELDS.items() if getattr(a, f) != getattr(b, f)]
 
 
 def _source_label(preset_id: str) -> str:
     """리포트 근거 푸터의 '해석 기준 유파' 라벨 (한글 display_name 사용 — 한자 노출 방지)."""
     if preset_id == DEFAULT_PRESET:
-        return _EOKBU_SRC
-    return load_preset(preset_id).display_name
+        return t(_EOKBU_SRC, _EOKBU_SRC_EN)
+    return i18n.preset_display_name(preset_id, load_preset(preset_id).display_name)
 
 
 def _verdict_line(birth: BirthInput, gender, year,
@@ -205,26 +301,46 @@ def _verdict_line(birth: BirthInput, gender, year,
     d = b["deterministic"]
     # 네 기둥·일지를 명시(모델이 8글자 문자열을 오파싱해 일지를 틀리게 읽는 환각 방지)
     pil = d["pillars"]
-    pillars_txt = " / ".join(f"{pos}주 {pil[pos]['stem']}{pil[pos]['branch']}"
-                             for pos in ("년", "월", "일", "시") if pos in pil)
-    ilji = pil["일"]["branch"] if "일" in pil else ""
-    line = (f"- 해석 유파: {preset.display_name}\n"
-            f"- 사주 네 기둥: {pillars_txt} (8글자 {d['eight_chars']})\n"
-            f"- 일간(나 자신): {d['day_master']}({d['day_master_element']}), "
-            f"일지(나의 자리·배우자궁)는 '{ilji}' — 이 글자를 일지로 정확히 쓸 것\n"
-            f"- 강약 {b['strength']}, 오행분포 {d['element_distribution']}")
+    if is_en():
+        pillars_txt = " / ".join(
+            f"{term(pos)} pillar {ganji_en(pil[pos]['stem'] + pil[pos]['branch'])}"
+            for pos in ("년", "월", "일", "시") if pos in pil)
+        ilji = branch_en(pil["일"]["branch"]) if "일" in pil else ""
+        line = (f"- Interpretation school: "
+                f"{i18n.preset_display_name(preset_id, preset.display_name)}\n"
+                f"- Four pillars: {pillars_txt} "
+                f"(eight characters: {_eight(d['eight_chars'])})\n"
+                f"- Day Master (you): {stem_en(d['day_master'])} "
+                f"({term(d['day_master_element'])}), and the day branch (your seat / spouse "
+                f"palace) is '{ilji}' — use exactly this letter for the day branch\n"
+                f"- Strength {term(b['strength'])}, "
+                f"element distribution {_dist(d['element_distribution'])}")
+    else:
+        pillars_txt = " / ".join(f"{pos}주 {pil[pos]['stem']}{pil[pos]['branch']}"
+                                 for pos in ("년", "월", "일", "시") if pos in pil)
+        ilji = pil["일"]["branch"] if "일" in pil else ""
+        line = (f"- 해석 유파: {preset.display_name}\n"
+                f"- 사주 네 기둥: {pillars_txt} (8글자 {d['eight_chars']})\n"
+                f"- 일간(나 자신): {d['day_master']}({d['day_master_element']}), "
+                f"일지(나의 자리·배우자궁)는 '{ilji}' — 이 글자를 일지로 정확히 쓸 것\n"
+                f"- 강약 {b['strength']}, 오행분포 {d['element_distribution']}")
     yong = None
     if b.get("yongsin"):
-        yong = f"{b['yongsin']['element']}({b['yongsin']['family']})"
-        line += f", 용신 {yong}"
+        el, fam = b["yongsin"]["element"], b["yongsin"]["family"]
+        yong = f"{term(el)} ({term(fam)})" if is_en() else f"{el}({fam})"
+        line += t(f", 용신 {yong}", f", useful god {yong}")
     trace_basis = [x for x in (_yongsin_trace_basis(b), _strength_margin_basis(b)) if x]
     return line, b["strength"], yong, trace_basis
 
 
 def _build_prompt(title: str, intro: str, sections: list[str], facts: str) -> str:
     secs = "\n".join(f"## {s}" for s in sections)
+    if is_en():
+        return (f"You are a warm, plain-spoken fortune counselor writing for everyday readers. "
+                f"You are writing the '{title}' report.\n{intro}\n\n{_base_rules()}\n"
+                f"[Section format]\n{secs}\n\n[Confirmed data]\n{facts}\n\n[Report]")
     return (f"당신은 일반인에게 쉽고 따뜻하게 풀어주는 운세 상담가입니다. '{title}' 리포트를 씁니다.\n"
-            f"{intro}\n\n{_BASE_RULES}\n[섹션 형식]\n{secs}\n\n"
+            f"{intro}\n\n{_base_rules()}\n[섹션 형식]\n{secs}\n\n"
             f"[확정 데이터]\n{facts}\n\n[리포트]")
 
 
@@ -232,10 +348,11 @@ def _basis_footer(basis: list[str], source: str) -> str:
     """리포트 맨 아래 '해석 근거'(결정론 계산값 + 기준 유파) 푸터."""
     if not basis:
         return ""
-    foot = "\n\n---\n**📎 이 풀이의 근거** (엔진이 계산한 사주 값)\n" + \
+    foot = t("\n\n---\n**📎 이 풀이의 근거** (엔진이 계산한 사주 값)\n",
+             "\n\n---\n**📎 Basis of this reading** (values computed by the engine)\n") + \
            "\n".join(f"- {b}" for b in basis)
     if source:
-        foot += f"\n\n*해석 기준: {source}*"
+        foot += t(f"\n\n*해석 기준: {source}*", f"\n\n*Interpretation basis: {source}*")
     return foot
 
 
@@ -246,24 +363,36 @@ def _grounding_violations(text: str, forbid: list[str],
     - forbid  : 등장하면 안 되는 문자열(확정과 모순되는 강약 등) — negative check.
     - require : **반드시 등장**해야 하는 확정값(강약·용신 오행) — positive check.
                 비결정 생성물이 결정론 근거를 실제로 반영했는지 검증한다(감사 ①).
-    - 한자 노출(쉬운 말 약속 위반) 점검.
+    - 한자 노출(쉬운 말 약속 위반) 점검. EN 모드에선 대소문자 무시 + 한글 노출도 위반.
     """
-    violations = [f"모순:{t}" for t in forbid if t and t in text]
-    violations += [f"미반영:{r}" for r in require if r and r not in text]
+    if is_en():
+        hay = text.lower()
+        hit = lambda s: s and s.lower() in hay          # noqa: E731
+        miss = lambda s: s and s.lower() not in hay      # noqa: E731
+    else:
+        hit = lambda s: s and s in text                  # noqa: E731
+        miss = lambda s: s and s not in text             # noqa: E731
+    violations = [t(f"모순:{f}", f"contradicts:{f}") for f in forbid if hit(f)]
+    violations += [t(f"미반영:{r}", f"missing:{r}") for r in require if miss(r)]
     # 한자 노출 — _dehanja 교정 후에도 남은 모든 CJK 한자(외래·드문 글자) 탐지(쉬운 말 위반).
     cjk = sorted({c for c in text if 0x3400 <= ord(c) <= 0x9FFF})
     if cjk:
-        violations.append("한자노출:" + "".join(cjk[:6]))
+        violations.append(t("한자노출:", "hanja:") + "".join(cjk[:6]))
+    if is_en():  # 영어 본문에 한글이 남아 있으면 그 자체가 위반
+        hangul = sorted({c for c in text if 0xAC00 <= ord(c) <= 0xD7A3})
+        if hangul:
+            violations.append("hangul:" + "".join(hangul[:6]))
     return violations
 
 
 def _require_values(strength: str, yong: str | None, *, with_yong: bool) -> list[str]:
     """positive grounding 요구값 — 강약 라벨 + (옵션) 용신 오행 글자.
 
-    yong 은 '토(관성)' 형태 → 오행 글자('토')만 요구(가족명 변형은 허용)."""
-    req = [strength]
+    yong 은 '토(관성)' / 'Earth (Authority)' 형태 → 오행 표기만 요구(가족명 변형은 허용).
+    EN 모드에선 강약도 영어 라벨('Strong Day Master' 등)로 요구한다."""
+    req = [term(strength) if is_en() else strength]
     if with_yong and yong:
-        req.append(yong.split("(")[0])
+        req.append(yong.split("(")[0].strip())
     return req
 
 
@@ -320,16 +449,29 @@ def saeun_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, **k
     vline, strength, yong, tbasis = _verdict_line(birth, gender, year, preset_id)
     se = luck.saeun(ch, year)
     months = luck.month_luck(ch, year)
-    mtxt = "\n".join(f"    {m['양력월_근사']} {m['ganji']}: 천간 {m['천간십신']}/지지 {m['지지십신']}"
-                     for m in months)
-    facts = (f"{vline}\n- {year} 세운(올해 간지): {se['ganji']} — 천간 {se['천간십신']}, "
-             f"지지 {se['지지십신']}, 오행 {se['오행']}\n- 월별 세운(12달):\n{mtxt}")
-    sections = ["📜 총론", "💰 재물운", "🏆 직장·사업운", "🏡 가정·건강운",
-                "💕 이성·대인관계", "🗓️ 월별 흐름(상·하반기 요약)"]
+    mtxt = "\n".join(
+        t(f"    {m['양력월_근사']} {m['ganji']}: 천간 {m['천간십신']}/지지 {m['지지십신']}",
+          f"    {_month_label(m['양력월_근사'])} {_g(m['ganji'])}: stem {term(m['천간십신'])} / "
+          f"branch {term(m['지지십신'])}")
+        for m in months)
+    facts = t(f"{vline}\n- {year} 세운(올해 간지): {se['ganji']} — 천간 {se['천간십신']}, "
+              f"지지 {se['지지십신']}, 오행 {se['오행']}\n- 월별 세운(12달):\n{mtxt}",
+              f"{vline}\n- {year} yearly ganji: {_g(se['ganji'])} — stem {term(se['천간십신'])}, "
+              f"branch {term(se['지지십신'])}, element {term(se['오행'])}\n"
+              f"- Monthly flow (12 months):\n{mtxt}")
+    sections = [t("📜 총론", "📜 Overview"), t("💰 재물운", "💰 Wealth"),
+                t("🏆 직장·사업운", "🏆 Career & Business"),
+                t("🏡 가정·건강운", "🏡 Home & Health"),
+                t("💕 이성·대인관계", "💕 Love & Relationships"),
+                t("🗓️ 월별 흐름(상·하반기 요약)", "🗓️ Month-by-Month Flow (H1/H2 summary)")]
     basis = [_verdict_basis(strength, yong),
-             f"{year} 세운(올해 간지): {se['ganji']} — 천간십신 {se['천간십신']}",
-             "월별 세운 12달 + 오행 분포로 흐름 산출"]
-    return _run("saeun", f"{year} 신년운세", f"{year}년 한 해의 흐름을 풀어주세요.",
+             t(f"{year} 세운(올해 간지): {se['ganji']} — 천간십신 {se['천간십신']}",
+               f"{year} yearly ganji: {_g(se['ganji'])} — stem god {term(se['천간십신'])}"),
+             t("월별 세운 12달 + 오행 분포로 흐름 산출",
+               "Flow derived from 12 monthly ganji + element distribution")]
+    return _run("saeun", t(f"{year} 신년운세", f"{year} New Year Fortune"),
+                t(f"{year}년 한 해의 흐름을 풀어주세요.",
+                  f"Interpret the flow of the year {year}."),
                 sections, facts, _forbid(strength),
                 require=_require_values(strength, yong, with_yong=True),
                 basis=basis + tbasis, source=_source_label(preset_id), **kw)
@@ -340,21 +482,36 @@ def pyeongsaeng_report(birth, *, gender=None, year=None, preset_id=DEFAULT_PRESE
     ch = _chart(birth, preset_id)
     r = interpret(birth, [preset_id], gender=gender)
     vline, strength, yong, tbasis = _verdict_line(birth, gender, None, preset_id)
-    stages_txt = "(대운 정보 없음 — 성별 미입력)"
+    stages_txt = t("(대운 정보 없음 — 성별 미입력)",
+                   "(no decade-cycle info — gender not given)")
+    _stage_en = {"초년": "Early years", "중년": "Middle years", "말년": "Later years"}
+    _yk_en = {"형제": "Siblings", "자식": "Children", "부부": "Spouse", "직업": "Career"}
     if r.get("daeun"):
         st = lifelong.life_stages(ch, r["daeun"])
         stages_txt = "\n".join(
-            f"    {k}: " + ", ".join(f"{p['나이']}세 {p['간지']}" for p in v["대운"])
+            t(f"    {k}: " + ", ".join(f"{p['나이']}세 {p['간지']}" for p in v["대운"]),
+              f"    {_stage_en.get(k, k)}: "
+              + ", ".join(f"age {p['나이']} {_g(p['간지'])}" for p in v["대운"]))
             for k, v in st.items())
     yk = lifelong.yukchin(ch, gender)
-    yk_txt = "\n".join(f"    [{k}] {v['hint']}" for k, v in yk.items())
-    facts = f"{vline}\n- 생애 단계(대운):\n{stages_txt}\n- 육친운:\n{yk_txt}"
-    sections = ["🌱 초년운", "🌳 중년운", "🍂 말년운", "👪 형제운", "🍼 자식운",
-                "💑 부부운", "💼 직업운"]
+    yk_txt = "\n".join(
+        t(f"    [{k}] {v['hint']}", f"    [{_yk_en.get(k, k)}] {v['hint']}")
+        for k, v in yk.items())
+    facts = t(f"{vline}\n- 생애 단계(대운):\n{stages_txt}\n- 육친운:\n{yk_txt}",
+              f"{vline}\n- Life stages (decade cycles):\n{stages_txt}\n"
+              f"- Family & relations (Ten-God reading):\n{yk_txt}")
+    sections = [t("🌱 초년운", "🌱 Early Years"), t("🌳 중년운", "🌳 Middle Years"),
+                t("🍂 말년운", "🍂 Later Years"), t("👪 형제운", "👪 Siblings"),
+                t("🍼 자식운", "🍼 Children"), t("💑 부부운", "💑 Marriage"),
+                t("💼 직업운", "💼 Career")]
     basis = [_verdict_basis(strength, yong),
-             "대운(10년 주기)을 초년·중년·말년 단계로 구분",
-             "형제·자식·부부·직업은 십신(관계 기운)으로 산출"]
-    return _run("pyeongsaeng", "평생운세", "타고난 한평생의 큰 흐름을 풀어주세요.",
+             t("대운(10년 주기)을 초년·중년·말년 단계로 구분",
+               "Decade cycles grouped into early / middle / later life stages"),
+             t("형제·자식·부부·직업은 십신(관계 기운)으로 산출",
+               "Siblings, children, marriage, and career derived from the Ten Gods")]
+    return _run("pyeongsaeng", t("평생운세", "Lifetime Fortune"),
+                t("타고난 한평생의 큰 흐름을 풀어주세요.",
+                  "Interpret the big arc of this person's whole life."),
                 sections, facts, _forbid(strength),
                 require=_require_values(strength, yong, with_yong=True),
                 basis=basis + tbasis, source=_source_label(preset_id), **kw)
@@ -366,7 +523,9 @@ def daeun_report(birth, *, gender=None, year=None, preset_id=DEFAULT_PRESET, **k
     대운은 성별(순행/역행)에 의존하므로 gender 가 없으면 산출 불가 → ValueError.
     """
     if gender not in ("남", "여"):
-        raise ValueError("대운(10년) 해석은 성별이 필요해요 — 순행/역행이 성별로 갈려요.")
+        raise ValueError(t("대운(10년) 해석은 성별이 필요해요 — 순행/역행이 성별로 갈려요.",
+                           "Decade-cycle reading needs a gender — forward/reverse order "
+                           "depends on it."))
     ch = _chart(birth, preset_id)
     r = interpret(birth, [preset_id], gender=gender)
     vline, strength, yong, tbasis = _verdict_line(birth, gender, None, preset_id)
@@ -375,26 +534,45 @@ def daeun_report(birth, *, gender=None, year=None, preset_id=DEFAULT_PRESET, **k
     tl = lifelong.daeun_timeline(ch, daeun, yongsin)
     arrow = "순행" if daeun["forward"] else "역행"
     cur = (r.get("current") or {}).get("current_daeun")
-    cur_txt = (f"{cur['age']}세 {cur['name']}(천간십신 {cur['천간십신']})" if cur
-               else "(아직 첫 대운 시작 전)")
+    _ages = lambda a: str(a).replace("세", "")  # noqa: E731 — EN 나이 표기용
+    cur_txt = t(f"{cur['age']}세 {cur['name']}(천간십신 {cur['천간십신']})" if cur
+                else "(아직 첫 대운 시작 전)",
+                f"age {cur['age']} {_g(cur['name'])} (stem god {term(cur['천간십신'])})" if cur
+                else "(first decade cycle has not started yet)")
     tl_txt = "\n".join(
-        f"    {x['나이']} {x['간지']}: 천간 {x['천간십신']}({x['천간가족']}) / "
-        f"지지 {x['지지십신']}({x['지지가족']}) · {x['용신부합']}" for x in tl)
-    facts = (f"{vline}\n- 대운 방향: {arrow} (첫 대운 {daeun['start_age']}세부터), 성별 {gender}\n"
-             f"- 지금 진행 중인 대운: {cur_txt}\n- 대운 10년 단위 타임라인:\n{tl_txt}")
-    sections = ["⏳ 대운이란? (10년의 큰 날씨)", "📍 지금 나의 대운",
-                "🌊 10년씩 인생 흐름 (대운별로)", "🔀 흐름이 바뀌는 전환점",
-                "🧭 시기별 핵심 조언"]
-    intro = ("10년 단위로 바뀌는 인생의 큰 흐름(대운)을 풀어주세요. "
-             "특히 '🌊 10년씩 인생 흐름' 섹션에서는 아래 타임라인을 나이대 순서대로 따라가며 "
-             "각 10년이 어떤 결인지 한 줄씩 짚고, '용신과 같은 기운(유리)'인 시기를 콕 집어주세요. "
-             "간지(갑자·을축 등)는 반드시 한글로만 쓰고 절대 한자(甲子 등)로 바꾸지 마세요. "
-             "나이는 '간지'보다 '나이대(예: 29~38세)' 중심으로 말해 읽기 쉽게.")
+        t(f"    {x['나이']} {x['간지']}: 천간 {x['천간십신']}({x['천간가족']}) / "
+          f"지지 {x['지지십신']}({x['지지가족']}) · {x['용신부합']}",
+          f"    ages {_ages(x['나이'])} {_g(x['간지'])}: stem {term(x['천간십신'])} "
+          f"({term(x['천간가족'])}) / branch {term(x['지지십신'])} ({term(x['지지가족'])}) · "
+          f"{x['용신부합']}") for x in tl)
+    facts = t(f"{vline}\n- 대운 방향: {arrow} (첫 대운 {daeun['start_age']}세부터), 성별 {gender}\n"
+              f"- 지금 진행 중인 대운: {cur_txt}\n- 대운 10년 단위 타임라인:\n{tl_txt}",
+              f"{vline}\n- Cycle direction: {term(arrow)} (first cycle from age "
+              f"{daeun['start_age']}), gender {term(gender)}\n"
+              f"- Current decade cycle: {cur_txt}\n- Decade timeline:\n{tl_txt}")
+    sections = [t("⏳ 대운이란? (10년의 큰 날씨)", "⏳ What Is a Decade Cycle? (10-year weather)"),
+                t("📍 지금 나의 대운", "📍 My Current Decade"),
+                t("🌊 10년씩 인생 흐름 (대운별로)", "🌊 Life in 10-Year Waves"),
+                t("🔀 흐름이 바뀌는 전환점", "🔀 Turning Points"),
+                t("🧭 시기별 핵심 조언", "🧭 Advice by Period")]
+    intro = t("10년 단위로 바뀌는 인생의 큰 흐름(대운)을 풀어주세요. "
+              "특히 '🌊 10년씩 인생 흐름' 섹션에서는 아래 타임라인을 나이대 순서대로 따라가며 "
+              "각 10년이 어떤 결인지 한 줄씩 짚고, '용신과 같은 기운(유리)'인 시기를 콕 집어주세요. "
+              "간지(갑자·을축 등)는 반드시 한글로만 쓰고 절대 한자(甲子 등)로 바꾸지 마세요. "
+              "나이는 '간지'보다 '나이대(예: 29~38세)' 중심으로 말해 읽기 쉽게.",
+              "Interpret the big 10-year waves of this life (decade cycles). In the "
+              "'🌊 Life in 10-Year Waves' section, walk the timeline below in age order, "
+              "give each decade a one-line character, and single out the periods marked "
+              "'same energy as your useful god (favorable)'. Write ganji only in the "
+              "romanized form given (e.g. 'Gap-ja') — never in Chinese characters. Speak "
+              "in age ranges (e.g. 'ages 29-38') rather than ganji so it reads easily.")
     basis = [_verdict_basis(strength, yong),
-             f"대운 {arrow}, 첫 대운 {daeun['start_age']}세부터 10년 주기",
-             f"지금 진행 중인 대운: {cur_txt}",
-             "각 대운 천간·지지 십신 + 용신 부합 여부로 시기 유불리 산출"]
-    return _run("daeun", "대운별(10년) 해석", intro,
+             t(f"대운 {arrow}, 첫 대운 {daeun['start_age']}세부터 10년 주기",
+               f"Decade cycles {term(arrow)}, first cycle from age {daeun['start_age']}"),
+             t(f"지금 진행 중인 대운: {cur_txt}", f"Current decade cycle: {cur_txt}"),
+             t("각 대운 천간·지지 십신 + 용신 부합 여부로 시기 유불리 산출",
+               "Each decade judged by its stem/branch Ten Gods + useful-god match")]
+    return _run("daeun", t("대운별(10년) 해석", "Decade Luck Cycles (10-Year Flow)"), intro,
                 sections, facts, _forbid(strength),
                 require=_require_values(strength, yong, with_yong=False),
                 basis=basis + tbasis, source=_source_label(preset_id), **kw)
@@ -408,16 +586,26 @@ def aejeong_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, *
     love = r["topics"]["애정·궁합"]
     months = luck.month_luck(ch, year)
     love_fams = {"정재", "편재", "정관", "식신", "상관"}
-    good = [m["양력월_근사"] for m in months
+    good = [_month_label(m["양력월_근사"]) for m in months
             if m["천간십신"] in love_fams or m["지지십신"] in love_fams]
-    facts = (f"{vline}\n- 애정 근거: {love['hint']} / {love['facts']}\n"
-             f"- {year} 인연·만남 유리한 달(애정 관련 기운): {', '.join(good) or '특정월 두드러지지 않음'}")
-    sections = ["💕 올해 애정 총론", "🌸 인연·만남이 좋은 시기", "⚠️ 조심할 시기",
-                "💍 솔로/커플 맞춤 조언"]
+    none_txt = t("특정월 두드러지지 않음", "no single month stands out")
+    facts = t(f"{vline}\n- 애정 근거: {love['hint']} / {love['facts']}\n"
+              f"- {year} 인연·만남 유리한 달(애정 관련 기운): {', '.join(good) or none_txt}",
+              f"{vline}\n- Love basis: {love['hint']} / {love['facts']}\n"
+              f"- {year} months favorable for bonds & meetings (love-related energy): "
+              f"{', '.join(good) or none_txt}")
+    sections = [t("💕 올해 애정 총론", "💕 This Year's Love Overview"),
+                t("🌸 인연·만남이 좋은 시기", "🌸 Good Periods for Meeting Someone"),
+                t("⚠️ 조심할 시기", "⚠️ Periods to Be Careful"),
+                t("💍 솔로/커플 맞춤 조언", "💍 Tailored Advice (Single / Couple)")]
     basis = [_verdict_basis(strength, yong),
-             f"배우자궁(일지)·배우자성: {love['hint']}",
-             f"{year} 애정 유리한 달: {', '.join(good) or '특정월 미두드러짐'}"]
-    return _run("aejeong", f"{year} 애정운·반쪽찾기", "올해 사랑과 인연의 흐름을 풀어주세요.",
+             t(f"배우자궁(일지)·배우자성: {love['hint']}",
+               f"Spouse palace (day branch) & spouse star: {love['hint']}"),
+             t(f"{year} 애정 유리한 달: {', '.join(good) or '특정월 미두드러짐'}",
+               f"{year} favorable love months: {', '.join(good) or none_txt}")]
+    return _run("aejeong", t(f"{year} 애정운·반쪽찾기", f"{year} Love & Soulmate"),
+                t("올해 사랑과 인연의 흐름을 풀어주세요.",
+                  "Interpret this year's flow of love and meaningful bonds."),
                 sections, facts, _forbid(strength),
                 require=_require_values(strength, yong, with_yong=False),
                 basis=basis + tbasis, source=_source_label(preset_id), **kw)
@@ -430,16 +618,26 @@ def today_report(birth, *, on=None, gender=None, year=None, preset_id=DEFAULT_PR
     parts = tuple(int(x) for x in d.split("-"))
     dl = luck.day_luck(ch, parts)
     vline, strength, yong, tbasis = _verdict_line(birth, gender, parts[0], preset_id)
-    facts = (f"{vline}\n- 오늘({dl['date']}) 일진: {dl['ganji']} — 천간 {dl['천간십신']}, "
-             f"지지 {dl['지지십신']}, 신살 {', '.join(dl['신살']) or '없음'}, "
-             f"점수 {dl['score']}/100({dl['길흉']})")
-    sections = ["🌅 오늘 총평", "💰 금전·일", "💕 애정·인연", "🩺 건강·주의", "🍀 오늘의 팁"]
-    basis = [f"오늘 일진(날짜 간지): {dl['ganji']} — 천간십신 {dl['천간십신']}",
-             f"신살: {', '.join(dl['신살']) or '없음'} · 점수 {dl['score']}/100({dl['길흉']})",
+    facts = t(f"{vline}\n- 오늘({dl['date']}) 일진: {dl['ganji']} — 천간 {dl['천간십신']}, "
+              f"지지 {dl['지지십신']}, 신살 {', '.join(dl['신살']) or '없음'}, "
+              f"점수 {dl['score']}/100({dl['길흉']})",
+              f"{vline}\n- Today's ({dl['date']}) day pillar: {_g(dl['ganji'])} — stem "
+              f"{term(dl['천간십신'])}, branch {term(dl['지지십신'])}, stars "
+              f"{_sinsal_list(dl['신살'])}, score {dl['score']}/100 ({_gil(dl['길흉'])})")
+    sections = [t("🌅 오늘 총평", "🌅 Today Overview"), t("💰 금전·일", "💰 Money & Work"),
+                t("💕 애정·인연", "💕 Love & Bonds"), t("🩺 건강·주의", "🩺 Health & Caution"),
+                t("🍀 오늘의 팁", "🍀 Today's Tip")]
+    basis = [t(f"오늘 일진(날짜 간지): {dl['ganji']} — 천간십신 {dl['천간십신']}",
+               f"Today's day pillar: {_g(dl['ganji'])} — stem god {term(dl['천간십신'])}"),
+             t(f"신살: {', '.join(dl['신살']) or '없음'} · 점수 {dl['score']}/100({dl['길흉']})",
+               f"Stars: {_sinsal_list(dl['신살'])} · score {dl['score']}/100 "
+               f"({_gil(dl['길흉'])})"),
              _verdict_basis(strength, yong)]
-    return _run("today", f"오늘의 운세 ({dl['date']})", "오늘 하루의 기운을 풀어주세요.",
+    return _run("today", t(f"오늘의 운세 ({dl['date']})", f"Today's Fortune ({dl['date']})"),
+                t("오늘 하루의 기운을 풀어주세요.", "Interpret the energy of this one day."),
                 sections, facts, _forbid(strength), basis=basis + tbasis,
-                source="자평 일진(日辰) · 신살", **kw)
+                source=t("자평 일진(日辰) · 신살", "Ziping day pillar (Iljin) · symbolic stars"),
+                **kw)
 
 
 def week_report(birth, *, start=None, gender=None, year=None, preset_id=DEFAULT_PRESET, **kw) -> Report:
@@ -448,17 +646,28 @@ def week_report(birth, *, start=None, gender=None, year=None, preset_id=DEFAULT_
     s = start or _date.today().isoformat()
     parts = tuple(int(x) for x in s.split("-"))
     days = luck.week_luck(ch, parts)
-    dtxt = "\n".join(f"    {x['date']} {x['ganji']}: {x['score']}점({x['길흉']}), "
-                     f"신살 {', '.join(x['신살']) or '-'}" for x in days)
+    dtxt = "\n".join(
+        t(f"    {x['date']} {x['ganji']}: {x['score']}점({x['길흉']}), "
+          f"신살 {', '.join(x['신살']) or '-'}",
+          f"    {x['date']} {_g(x['ganji'])}: {x['score']} pts ({_gil(x['길흉'])}), "
+          f"stars {', '.join(term(s2) for s2 in x['신살']) or '-'}") for x in days)
     vline, strength, yong, tbasis = _verdict_line(birth, gender, parts[0], preset_id)
-    facts = f"{vline}\n- 이번 주 일진:\n{dtxt}"
-    sections = ["📅 이번 주 총평", "📈 가장 좋은 날", "📉 조심할 날", "🎯 주간 전략"]
-    basis = ["이번 주 7일 일진(날짜 간지)별 신살·점수 산출",
-             f"기간: {days[0]['date']} ~ {days[-1]['date']}",
+    facts = t(f"{vline}\n- 이번 주 일진:\n{dtxt}",
+              f"{vline}\n- This week's day pillars:\n{dtxt}")
+    sections = [t("📅 이번 주 총평", "📅 Week Overview"),
+                t("📈 가장 좋은 날", "📈 Best Days"),
+                t("📉 조심할 날", "📉 Days to Be Careful"),
+                t("🎯 주간 전략", "🎯 Weekly Strategy")]
+    basis = [t("이번 주 7일 일진(날짜 간지)별 신살·점수 산출",
+               "Stars & scores computed for each of this week's 7 day pillars"),
+             t(f"기간: {days[0]['date']} ~ {days[-1]['date']}",
+               f"Period: {days[0]['date']} ~ {days[-1]['date']}"),
              _verdict_basis(strength, yong)]
-    return _run("week", "주간 운세", "이번 주 7일의 흐름을 풀어주세요.",
+    return _run("week", t("주간 운세", "Weekly Fortune"),
+                t("이번 주 7일의 흐름을 풀어주세요.", "Interpret the flow of these 7 days."),
                 sections, facts, _forbid(strength), basis=basis + tbasis,
-                source="자평 일진(日辰) · 신살", **kw)
+                source=t("자평 일진(日辰) · 신살", "Ziping day pillar (Iljin) · symbolic stars"),
+                **kw)
 
 
 def tojeong_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, **kw) -> Report:
@@ -467,42 +676,82 @@ def tojeong_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, *
     g = tojeong.tojeong_gwae(birth, year)
     vline, strength, yong, tbasis = _verdict_line(birth, gender, year, preset_id)
     se = luck.saeun(ch, year)
-    facts = (f"{vline}\n- {year} 토정비결 괘: {g['괘번호']} (상괘 {g['상괘']}·중괘 {g['중괘']}·하괘 {g['하괘']}), "
-             f"세는나이 {g['age']}세, 음력 생월 {g['음력']['month']}월 {g['음력']['day']}일\n"
-             f"- {year} 세운: {se['ganji']}(천간 {se['천간십신']})\n"
-             f"- 참고: 괘 풀이는 작괘 결과와 사주에 근거한 해석이며 전통 괘사 원문이 아님")
-    sections = ["🔮 올해 총운(괘 풀이)", "💰 재물운", "🧭 신상·관재(주의할 일)", "🌟 한 해 길잡이"]
-    basis = [f"토정비결 괘: {g['괘번호']} (상괘 {g['상괘']}·중괘 {g['중괘']}·하괘 {g['하괘']})",
-             f"작괘: 세는나이 {g['age']}세 + 음력 생월·생일(선천수 기반)",
-             f"{year} 세운: {se['ganji']} · {_verdict_basis(strength, yong)}"]
-    return _run("tojeong", f"{year} 토정비결", f"{year}년 토정비결 괘({g['괘번호']})로 한 해를 풀어주세요.",
+    facts = t(f"{vline}\n- {year} 토정비결 괘: {g['괘번호']} (상괘 {g['상괘']}·중괘 {g['중괘']}·하괘 {g['하괘']}), "
+              f"세는나이 {g['age']}세, 음력 생월 {g['음력']['month']}월 {g['음력']['day']}일\n"
+              f"- {year} 세운: {se['ganji']}(천간 {se['천간십신']})\n"
+              f"- 참고: 괘 풀이는 작괘 결과와 사주에 근거한 해석이며 전통 괘사 원문이 아님",
+              f"{vline}\n- {year} Tojeong Bigyeol hexagram: {g['괘번호']} (upper {g['상괘']} · "
+              f"middle {g['중괘']} · lower {g['하괘']}), Korean age {g['age']}, lunar birth "
+              f"month {g['음력']['month']}, day {g['음력']['day']}\n"
+              f"- {year} yearly ganji: {_g(se['ganji'])} (stem {term(se['천간십신'])})\n"
+              f"- Note: the hexagram reading interprets the cast numbers plus the Saju chart — "
+              f"it is not a quotation of the traditional verse text")
+    sections = [t("🔮 올해 총운(괘 풀이)", "🔮 Year Overview (Hexagram Reading)"),
+                t("💰 재물운", "💰 Wealth"),
+                t("🧭 신상·관재(주의할 일)", "🧭 Personal Matters & Things to Watch"),
+                t("🌟 한 해 길잡이", "🌟 Guide for the Year")]
+    basis = [t(f"토정비결 괘: {g['괘번호']} (상괘 {g['상괘']}·중괘 {g['중괘']}·하괘 {g['하괘']})",
+               f"Tojeong hexagram: {g['괘번호']} (upper {g['상괘']} · middle {g['중괘']} · "
+               f"lower {g['하괘']})"),
+             t(f"작괘: 세는나이 {g['age']}세 + 음력 생월·생일(선천수 기반)",
+               f"Cast from Korean age {g['age']} + lunar birth month/day (innate numbers)"),
+             t(f"{year} 세운: {se['ganji']} · {_verdict_basis(strength, yong)}",
+               f"{year} yearly ganji: {_g(se['ganji'])} · {_verdict_basis(strength, yong)}")]
+    return _run("tojeong", t(f"{year} 토정비결", f"{year} Tojeong Bigyeol"),
+                t(f"{year}년 토정비결 괘({g['괘번호']})로 한 해를 풀어주세요.",
+                  f"Interpret the year {year} through Tojeong Bigyeol hexagram {g['괘번호']}. "
+                  f"Tojeong Bigyeol is Korea's beloved New Year divination classic."),
                 sections, facts, _forbid(strength),
-                basis=basis + tbasis, source="토정비결 작괘법(선천수) + 사주 보조", **kw)
+                basis=basis + tbasis,
+                source=t("토정비결 작괘법(선천수) + 사주 보조",
+                         "Tojeong Bigyeol hexagram casting + Saju support"), **kw)
 
 
 def gunghap_report(birth, *, partner=None, gender=None, year=None,
                    preset_id=DEFAULT_PRESET, **kw) -> Report:
     """궁합 — 두 사람 합 점수 + 항목별 + 조언. (year·preset_id 인자는 무시 — 궁합은 유파 무관)"""
     if partner is None:
-        raise ValueError("궁합은 상대방 생년월일시(partner=BirthInput)가 필요합니다")
+        raise ValueError(t("궁합은 상대방 생년월일시(partner=BirthInput)가 필요합니다",
+                           "Compatibility needs the partner's birth date & time "
+                           "(partner=BirthInput)"))
     g = compatibility.gunghap(birth, partner)
-    facts = (f"- 나: {g['a']['eight_chars']} (일간 {g['a']['일간']})\n"
-             f"- 상대: {g['b']['eight_chars']} (일간 {g['b']['일간']})\n"
-             f"- 총점 {g['총점']}/100 ({g['등급']})\n"
-             f"- 일간관계 {g['일간관계']['label']}({g['일간관계']['점수']}), "
-             f"일지 {g['일지관계']['label']}({g['일지관계']['점수']}), "
-             f"띠 {g['띠관계']['label']}({g['띠관계']['점수']}), "
-             f"오행보완 {g['오행보완']['label']}({g['오행보완']['점수']})\n"
-             f"- 근거: {'; '.join(g['근거'])}")
-    sections = ["💞 궁합 총평", "🔗 두 사람의 결(일간·일지)", "⚖️ 서로 채워주는 기운(오행)",
-                "💡 관계를 위한 조언"]
-    basis = [f"총점 {g['총점']}/100 ({g['등급']})",
-             f"일간 {g['일간관계']['label']} · 일지 {g['일지관계']['label']} · "
-             f"띠 {g['띠관계']['label']} · 오행보완 {g['오행보완']['label']}",
-             "가중: 일간 35% · 일지 25% · 띠 20% · 오행보완 20%"]
-    return _run("gunghap", "궁합", "두 사람의 궁합을 풀어주세요.",
+    facts = t(f"- 나: {g['a']['eight_chars']} (일간 {g['a']['일간']})\n"
+              f"- 상대: {g['b']['eight_chars']} (일간 {g['b']['일간']})\n"
+              f"- 총점 {g['총점']}/100 ({g['등급']})\n"
+              f"- 일간관계 {g['일간관계']['label']}({g['일간관계']['점수']}), "
+              f"일지 {g['일지관계']['label']}({g['일지관계']['점수']}), "
+              f"띠 {g['띠관계']['label']}({g['띠관계']['점수']}), "
+              f"오행보완 {g['오행보완']['label']}({g['오행보완']['점수']})\n"
+              f"- 근거: {'; '.join(g['근거'])}",
+              f"- Me: {_eight(g['a']['eight_chars'])} (Day Master {stem_en(g['a']['일간'])})\n"
+              f"- Partner: {_eight(g['b']['eight_chars'])} "
+              f"(Day Master {stem_en(g['b']['일간'])})\n"
+              f"- Total {g['총점']}/100 ({term(g['등급'])})\n"
+              f"- Day-stem relation {term(g['일간관계']['label'])} ({g['일간관계']['점수']}), "
+              f"day-branch {term(g['일지관계']['label'])} ({g['일지관계']['점수']}), "
+              f"zodiac {term(g['띠관계']['label'])} ({g['띠관계']['점수']}), "
+              f"element complement {term(g['오행보완']['label'])} ({g['오행보완']['점수']})\n"
+              f"- Basis: {'; '.join(g['근거'])}")
+    sections = [t("💞 궁합 총평", "💞 Compatibility Overview"),
+                t("🔗 두 사람의 결(일간·일지)", "🔗 How Your Textures Meet (day stem & branch)"),
+                t("⚖️ 서로 채워주는 기운(오행)", "⚖️ Energies You Fill In for Each Other"),
+                t("💡 관계를 위한 조언", "💡 Advice for the Relationship")]
+    basis = [t(f"총점 {g['총점']}/100 ({g['등급']})",
+               f"Total {g['총점']}/100 ({term(g['등급'])})"),
+             t(f"일간 {g['일간관계']['label']} · 일지 {g['일지관계']['label']} · "
+               f"띠 {g['띠관계']['label']} · 오행보완 {g['오행보완']['label']}",
+               f"Day stem {term(g['일간관계']['label'])} · day branch "
+               f"{term(g['일지관계']['label'])} · zodiac {term(g['띠관계']['label'])} · "
+               f"element complement {term(g['오행보완']['label'])}"),
+             t("가중: 일간 35% · 일지 25% · 띠 20% · 오행보완 20%",
+               "Weights: day stem 35% · day branch 25% · zodiac 20% · elements 20%")]
+    return _run("gunghap", t("궁합", "Compatibility"),
+                t("두 사람의 궁합을 풀어주세요.",
+                  "Interpret how these two people match."),
                 sections, facts, (), basis=basis,
-                source="자평 궁합 (일간·일지·삼합·오행보완)", **kw)
+                source=t("자평 궁합 (일간·일지·삼합·오행보완)",
+                         "Ziping compatibility (day stem/branch · harmonies · elements)"),
+                **kw)
 
 
 def wealth_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, **kw) -> Report:
@@ -512,13 +761,22 @@ def wealth_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, **
     r = interpret(birth, [preset_id], gender=gender, now_year=year)
     wealth = r["topics"]["재물"]
     se = luck.saeun(ch, year)
-    facts = (f"{vline}\n- 재물 근거: {wealth['hint']} / {wealth['facts']}\n"
-             f"- {year} 세운: {se['ganji']}(천간 {se['천간십신']})")
-    sections = ["💰 나의 재물 그릇", f"📈 {year} 재물 흐름", "🏦 모으고 지키는 전략", "⚠️ 돈 주의보"]
+    facts = t(f"{vline}\n- 재물 근거: {wealth['hint']} / {wealth['facts']}\n"
+              f"- {year} 세운: {se['ganji']}(천간 {se['천간십신']})",
+              f"{vline}\n- Wealth basis: {wealth['hint']} / {wealth['facts']}\n"
+              f"- {year} yearly ganji: {_g(se['ganji'])} (stem {term(se['천간십신'])})")
+    sections = [t("💰 나의 재물 그릇", "💰 My Wealth Vessel"),
+                t(f"📈 {year} 재물 흐름", f"📈 {year} Money Flow"),
+                t("🏦 모으고 지키는 전략", "🏦 Strategies to Build & Protect"),
+                t("⚠️ 돈 주의보", "⚠️ Money Cautions")]
     basis = [_verdict_basis(strength, yong),
-             f"재물 그릇(재성): {wealth['hint']}",
-             f"{year} 세운: {se['ganji']} — 천간십신 {se['천간십신']}"]
-    return _run("wealth", f"{year} 재물운", "타고난 재물 성향과 올해 재물운을 풀어주세요.",
+             t(f"재물 그릇(재성): {wealth['hint']}",
+               f"Wealth vessel (Wealth stars): {wealth['hint']}"),
+             t(f"{year} 세운: {se['ganji']} — 천간십신 {se['천간십신']}",
+               f"{year} yearly ganji: {_g(se['ganji'])} — stem god {term(se['천간십신'])}")]
+    return _run("wealth", t(f"{year} 재물운", f"{year} Wealth Fortune"),
+                t("타고난 재물 성향과 올해 재물운을 풀어주세요.",
+                  "Interpret this person's innate money nature and this year's wealth flow."),
                 sections, facts, _forbid(strength),
                 require=_require_values(strength, yong, with_yong=True),
                 basis=basis + tbasis, source=_source_label(preset_id), **kw)
@@ -530,17 +788,23 @@ def health_report(birth, year=2026, *, gender=None, preset_id=DEFAULT_PRESET, **
     vline, strength, yong, tbasis = _verdict_line(birth, gender, year, preset_id)
     r = interpret(birth, [preset_id], gender=gender, now_year=year)
     health = r["topics"]["건강"]
-    facts = f"{vline}\n- 건강 근거: {health['hint']} / {health['facts']}"
-    sections = ["🩺 타고난 체질·약한 곳", f"📅 {year} 건강 흐름", "🌿 생활 관리법"]
+    facts = t(f"{vline}\n- 건강 근거: {health['hint']} / {health['facts']}",
+              f"{vline}\n- Health basis: {health['hint']} / {health['facts']}")
+    sections = [t("🩺 타고난 체질·약한 곳", "🩺 Innate Constitution & Weak Spots"),
+                t(f"📅 {year} 건강 흐름", f"📅 {year} Health Flow"),
+                t("🌿 생활 관리법", "🌿 Daily Care")]
     basis = [_verdict_basis(strength, yong),
-             f"오행 균형·결핍·충형: {health['hint']}"]
-    return _run("health", f"{year} 건강운", "타고난 건강 경향과 올해 주의점을 풀어주세요.",
+             t(f"오행 균형·결핍·충형: {health['hint']}",
+               f"Element balance, gaps, clashes: {health['hint']}")]
+    return _run("health", t(f"{year} 건강운", f"{year} Health Fortune"),
+                t("타고난 건강 경향과 올해 주의점을 풀어주세요.",
+                  "Interpret innate health tendencies and this year's cautions."),
                 sections, facts, _forbid(strength),
                 require=_require_values(strength, yong, with_yong=False),
                 basis=basis + tbasis, source=_source_label(preset_id), **kw)
 
 
-# 메뉴 카탈로그 (앱에서 노출)
+# 메뉴 카탈로그 (앱에서 노출) — 한국어 원본. 언어 인지형 접근은 catalog() 사용.
 CATALOG = [
     ("saeun", "🎊 2026 신년운세", "올 한 해 종합 + 월별 흐름"),
     ("tojeong", "🔮 2026 토정비결", "작괘로 보는 올해 길흉"),
@@ -553,6 +817,26 @@ CATALOG = [
     ("week", "📅 주간 운세", "이번 주 7일 흐름"),
     ("health", "🩺 건강운", "체질과 올해 건강"),
 ]
+
+_CATALOG_EN = {
+    "saeun": ("🎊 2026 New Year Fortune", "The whole year + month-by-month flow"),
+    "tojeong": ("🔮 2026 Tojeong Bigyeol", "The year's luck by hexagram casting"),
+    "aejeong": ("💕 Love & Soulmate", "This year's love, bonds, and good months"),
+    "gunghap": ("💞 Compatibility", "Two people's match (partner's birth needed)"),
+    "wealth": ("💰 Wealth", "Your money vessel and this year's flow"),
+    "pyeongsaeng": ("📜 Lifetime Fortune", "Early/middle/later years + family & career"),
+    "daeun": ("⏳ Decade Cycles", "Life's big 10-year waves and their timing"),
+    "today": ("🌅 Today's Fortune", "Today's day-pillar reading"),
+    "week": ("📅 Weekly Fortune", "This week's 7-day flow"),
+    "health": ("🩺 Health", "Constitution and this year's health"),
+}
+
+
+def catalog() -> list[tuple[str, str, str]]:
+    """언어 인지형 메뉴 카탈로그 — ko 는 CATALOG 그대로, en 은 영어 라벨/설명."""
+    if not is_en():
+        return list(CATALOG)
+    return [(k, *_CATALOG_EN.get(k, (label, desc))) for k, label, desc in CATALOG]
 
 REPORTS = {
     "saeun": saeun_report, "tojeong": tojeong_report, "aejeong": aejeong_report,
@@ -576,7 +860,9 @@ def preset_menu() -> list[tuple[str, str, str]]:
     known = set(list_presets())
     ids = [p for p in _PRESET_ORDER if p in known]
     ids += [p for p in list_presets() if p not in ids]   # 순서 미지정분은 뒤에
-    return [(pid, load_preset(pid).display_name, load_preset(pid).description) for pid in ids]
+    return [(pid,
+             i18n.preset_display_name(pid, load_preset(pid).display_name),
+             i18n.preset_description(pid, load_preset(pid).description)) for pid in ids]
 
 
 # ── 일반인용 간편 해석 방식(3종) ──────────────────────────────────────────
@@ -598,8 +884,12 @@ def simple_preset_menu() -> list[tuple[str, str, str]]:
     """일반인용 간편 해석 방식 메뉴: (preset_id, 쉬운 라벨, 쉬운 설명). 앱 버튼용.
 
     전문가용 전체 7종은 preset_menu(). 맨 앞이 기본값(DEFAULT_PRESET, 표준)이다.
+    EN 모드에선 영어 라벨/설명(i18n.SIMPLE_PRESET_EN)으로 바뀐다.
     """
-    return list(SIMPLE_PRESETS)
+    if not is_en():
+        return list(SIMPLE_PRESETS)
+    return [(pid, *i18n.SIMPLE_PRESET_EN.get(pid, (label, desc)))
+            for pid, label, desc in SIMPLE_PRESETS]
 
 
 def run_report(kind: str, birth: BirthInput, **kw) -> Report:
@@ -609,5 +899,6 @@ def run_report(kind: str, birth: BirthInput, **kw) -> Report:
     preset_id 미지정 시 DEFAULT_PRESET(정통 억부). 궁합은 유파 무관(무시).
     """
     if kind not in REPORTS:
-        raise ValueError(f"알 수 없는 운세 카테고리: {kind}")
+        raise ValueError(t(f"알 수 없는 운세 카테고리: {kind}",
+                           f"Unknown fortune category: {kind}"))
     return REPORTS[kind](birth, **kw)

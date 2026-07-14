@@ -40,6 +40,11 @@
   .me-btn{border:1px solid var(--vermilion);border-radius:2px;padding:5px 14px;
           font-size:.8rem;color:var(--paper);white-space:nowrap;transition:background .2s}
   .me-btn:hover{background:var(--vermilion)}
+  .lang-btn{border:1px solid var(--line);border-radius:999px;background:none;cursor:pointer;
+            font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;padding:5px 11px;
+            color:var(--mist);display:inline-flex;gap:5px;align-items:center;transition:border-color .2s}
+  .lang-btn:hover{border-color:var(--mist)}
+  .lang-btn .on{color:var(--paper);font-weight:500}
   @media(max-width:680px){.brand .back{display:none}}
 
   main{height:calc(100% - var(--nav-h));position:relative}
@@ -63,20 +68,23 @@
 <body>
 
 <nav>
-  <span class="brand"><a href="/">哲<em>命</em></a><a class="back" href="/">← 소개로 돌아가기</a></span>
+  <span class="brand"><a href="/">哲<em>命</em></a><a class="back" href="/" data-i18n="back">← 소개로 돌아가기</a></span>
   <span class="svc-tabs" role="tablist" aria-label="서비스 전환 (새 대화로 시작)">
-    <a class="svc-tab saju" id="tab-saju" href="/app?service=saju" title="사주 운세로 새 대화">🔮 사주 운세</a>
-    <a class="svc-tab philo" id="tab-philo" href="/app?service=philo" title="철학 탐구로 새 대화">🧭 철학 탐구</a>
+    <a class="svc-tab saju" id="tab-saju" href="/app?service=saju" title="사주 운세로 새 대화" data-i18n="tabSaju" data-i18n-title="tabSajuTitle">🔮 사주 운세</a>
+    <a class="svc-tab philo" id="tab-philo" href="/app?service=philo" title="철학 탐구로 새 대화" data-i18n="tabPhilo" data-i18n-title="tabPhiloTitle">🧭 철학 탐구</a>
   </span>
   <span class="right">
-    <a class="me-btn" href="/me" title="저장된 사주·철학·통합 리포트 다시 보기 (채팅과 같은 계정)">📖 내 기록</a>
+    <button class="lang-btn" id="langBtn" type="button" aria-label="언어 전환 · Switch language">
+      <span id="langKo" class="on">KO</span><span aria-hidden="true">·</span><span id="langEn">EN</span>
+    </button>
+    <a class="me-btn" href="/me" title="저장된 사주·철학·통합 리포트 다시 보기 (채팅과 같은 계정)" data-i18n="me" data-i18n-title="meTitle">📖 내 기록</a>
   </span>
 </nav>
 
 <main>
   <div class="loading" id="loading" aria-hidden="true">
     <div class="seal">知命</div>
-    <span>두 렌즈를 닦는 중…</span>
+    <span data-i18n="loading">두 렌즈를 닦는 중…</span>
   </div>
   <iframe id="chat" src="/chat" title="哲命 채팅 — 사주 운세 · 철학 탐구"
           allow="clipboard-write"></iframe>
@@ -95,7 +103,7 @@
   // 프로필 콤보박스(Radix)를 키보드 시퀀스로 조작한다. 로그인 화면이 먼저면
   // 콤보박스 등장(=로그인 완료)까지 기다린다.
   const SERVICE = new URLSearchParams(location.search).get("service");
-  const TARGET = { saju: "사주 운세", philo: "철학 탐구" }[SERVICE] || null;
+  const TARGET = { saju: "사주", philo: "철학" }[SERVICE] || null;  // 부분일치 — "🔮 사주 · Saju"
   if (TARGET) document.getElementById("tab-" + SERVICE)?.classList.add("active");
 
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -137,7 +145,7 @@
         // 진행 중 대화가 있으면 '새 채팅' 확인 다이얼로그 — 직행 의도가 명확하므로 진행
         const confirm = await waitFor(
           () => [...d().querySelectorAll('[role="dialog"] button, [role="alertdialog"] button')]
-            .find(b => b.textContent.trim() === "확인"), 2000, 150);
+            .find(b => ["확인", "Confirm"].includes(b.textContent.trim())), 2000, 150);
         if (confirm) confirm.click();
       }
       await sleep(900);
@@ -149,7 +157,59 @@
     document.querySelectorAll(".svc-tab").forEach(t => t.classList.remove("active"));
     if (SERVICE) document.getElementById("tab-" + SERVICE)?.classList.add("active");
   }
-  if (TARGET) frame.addEventListener("load", () => { switchProfile(TARGET); }, { once: true });
+
+  // ── 저장된 언어(EN)를 채팅에 자동 적용 — 웰컴의 '🌐 English' 액션 버튼을 대신 눌러준다.
+  //    (KO 는 채팅 기본값이라 클릭 불필요. 프로필 자동 전환 뒤에 실행해야 새 웰컴에 적용된다.)
+  async function applyChatLang() {
+    let want = null;
+    try { want = localStorage.getItem("cm.lang"); } catch (e) {}
+    if (want !== "en") return;
+    const btn = await waitFor(() => {
+      const d = frame.contentDocument;
+      if (!d) return null;
+      return [...d.querySelectorAll("button")].find(b => b.textContent.includes("🌐 English"));
+    }, 45000, 400);
+    if (btn) btn.click();
+  }
+  frame.addEventListener("load", async () => {
+    if (TARGET) await switchProfile(TARGET);
+    applyChatLang();
+  }, { once: true });
+
+  // ── KO/EN 토글 — 랜딩과 같은 localStorage("cm.lang") 공유. 셸 UI 만 즉시 전환되고,
+  //    iframe 내부 채팅(Chainlit)의 언어는 채팅 쪽 작업(단계 2)에서 잇는다.
+  const EN = {
+    back: "← Back to intro",
+    tabSaju: "🔮 Saju Fortune", tabSajuTitle: "New conversation in Saju Fortune",
+    tabPhilo: "🧭 Philosophy", tabPhiloTitle: "New conversation in Philosophical Inquiry",
+    me: "📖 My records", meTitle: "Revisit saved Saju, philosophy, and combined reports (same account as chat)",
+    loading: "Polishing the two lenses…",
+    docTitle: "哲命 — Explore",
+  };
+  const KO_TEXT = {}, KO_TITLE = {}, KO_DOC = document.title;
+  function applyLang(lang) {
+    document.documentElement.lang = lang === "en" ? "en" : "ko";
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const k = el.dataset.i18n;
+      if (!(k in KO_TEXT)) KO_TEXT[k] = el.textContent;
+      el.textContent = lang === "en" && EN[k] ? EN[k] : KO_TEXT[k];
+    });
+    document.querySelectorAll("[data-i18n-title]").forEach(el => {
+      const k = el.dataset.i18nTitle;
+      if (!(k in KO_TITLE)) KO_TITLE[k] = el.title;
+      el.title = lang === "en" && EN[k] ? EN[k] : KO_TITLE[k];
+    });
+    document.title = lang === "en" ? EN.docTitle : KO_DOC;
+    document.getElementById("langKo").classList.toggle("on", lang !== "en");
+    document.getElementById("langEn").classList.toggle("on", lang === "en");
+    try { localStorage.setItem("cm.lang", lang); } catch (e) {}
+  }
+  const qsLang = new URLSearchParams(location.search).get("lang");
+  let savedLang = null;
+  try { savedLang = localStorage.getItem("cm.lang"); } catch (e) {}
+  applyLang(qsLang === "en" ? "en" : qsLang === "ko" ? "ko" : (savedLang || "ko"));
+  document.getElementById("langBtn").addEventListener("click", () =>
+    applyLang(document.documentElement.lang === "en" ? "ko" : "en"));
 </script>
 </body>
 </html>

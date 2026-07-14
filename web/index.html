@@ -46,6 +46,11 @@
   .nav-cta{border:1px solid var(--vermilion);color:var(--paper);padding:7px 18px;border-radius:2px;
            transition:background .2s}
   .nav-cta:hover{background:var(--vermilion)}
+  .lang-btn{border:1px solid var(--line);border-radius:999px;background:none;cursor:pointer;
+            font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;padding:6px 12px;
+            color:var(--mist);display:inline-flex;gap:6px;align-items:center;transition:border-color .2s}
+  .lang-btn:hover{border-color:var(--mist)}
+  .lang-btn .on{color:var(--paper);font-weight:500}
   @media(max-width:680px){.nav-links a:not(.nav-cta){display:none}}
 
   /* ── hero ────────────────────────────── */
@@ -200,11 +205,14 @@
   <div class="wrap nav-in">
     <a class="brand" href="/">哲<em>命</em></a>
     <div class="nav-links">
-      <a href="#services">두 서비스</a>
-      <a href="#creed">원칙</a>
-      <a href="#connect">연결</a>
-      <a href="/me" title="저장된 탐색 기록 (로그인 계정)">내 기록</a>
-      <a class="nav-cta" href="/app">시작하기</a>
+      <a href="#services" data-i18n="nav.services">두 서비스</a>
+      <a href="#creed" data-i18n="nav.creed">원칙</a>
+      <a href="#connect" data-i18n="nav.connect">연결</a>
+      <a href="/me" id="navMe" title="저장된 탐색 기록 (로그인 계정)" data-i18n="nav.me">내 기록</a>
+      <a class="nav-cta" href="/app" data-i18n="nav.cta">시작하기</a>
+      <button class="lang-btn" id="langBtn" type="button" aria-label="언어 전환 · Switch language">
+        <span id="langKo" class="on">KO</span><span aria-hidden="true">·</span><span id="langEn">EN</span>
+      </button>
     </div>
   </div>
 </nav>
@@ -212,34 +220,34 @@
 <header class="hero wrap">
   <div class="seal stamped" aria-hidden="true">知命</div>
   <span class="hero-eyebrow rise">philosophy × saju</span>
-  <h1 class="rise d1">나를 읽는<br><span class="two">두 개의 렌즈</span></h1>
-  <p class="hero-sub rise d2">동양의 명리는 <strong>태어난 순간</strong>을 읽고, 서양의 철학은
+  <h1 class="rise d1" data-i18n="hero.h1">나를 읽는<br><span class="two">두 개의 렌즈</span></h1>
+  <p class="hero-sub rise d2" data-i18n="hero.sub">동양의 명리는 <strong>태어난 순간</strong>을 읽고, 서양의 철학은
     <strong>살아온 생각</strong>을 읽습니다.<br>델포이의 「너 자신을 알라」와 명리의 「知命」 —
     방향이 다른 두 시선을 한 곳에 모았습니다.</p>
   <div class="hero-cta rise d3">
-    <a class="btn btn-primary" href="/app">탐구 시작하기</a>
-    <a class="btn btn-ghost" href="#creed">이 플랫폼의 원칙</a>
+    <a class="btn btn-primary" href="/app" data-i18n="hero.ctaMain">탐구 시작하기</a>
+    <a class="btn btn-ghost" href="#creed" data-i18n="hero.ctaCreed">이 플랫폼의 원칙</a>
   </div>
 
   <div class="lenses">
     <a class="lens lens-saju rise" href="/app?service=saju"
-       aria-label="사주 운세 바로 시작">
-      <span class="lens-tag"><b>命</b> · 태어난 순간의 여덟 글자</span>
+       aria-label="사주 운세 바로 시작" data-i18n-aria="lens.sajuAria">
+      <span class="lens-tag" data-i18n="lens.sajuTag"><b>命</b> · 태어난 순간의 여덟 글자</span>
       <div class="myeongsik" aria-label="사주 명식 예시">
-        <div class="pillar"><span class="sipsin">년 · 편관</span><span class="hanja">戊<br>寅</span><span class="kr">무인</span></div>
-        <div class="pillar"><span class="sipsin">월 · 겁재</span><span class="hanja">癸<br>亥</span><span class="kr">계해</span></div>
-        <div class="pillar pillar-day"><span class="sipsin">일 · 일원</span><span class="hanja">壬<br>戌</span><span class="kr">임술</span></div>
-        <div class="pillar"><span class="sipsin">시 · 정인</span><span class="hanja">辛<br>亥</span><span class="kr">신해</span></div>
+        <div class="pillar"><span class="sipsin" data-i18n="ms.p1s">년 · 편관</span><span class="hanja">戊<br>寅</span><span class="kr" data-i18n="ms.p1k">무인</span></div>
+        <div class="pillar"><span class="sipsin" data-i18n="ms.p2s">월 · 겁재</span><span class="hanja">癸<br>亥</span><span class="kr" data-i18n="ms.p2k">계해</span></div>
+        <div class="pillar pillar-day"><span class="sipsin" data-i18n="ms.p3s">일 · 일원</span><span class="hanja">壬<br>戌</span><span class="kr" data-i18n="ms.p3k">임술</span></div>
+        <div class="pillar"><span class="sipsin" data-i18n="ms.p4s">시 · 정인</span><span class="hanja">辛<br>亥</span><span class="kr" data-i18n="ms.p4k">신해</span></div>
       </div>
-      <p class="lens-note">1998년 11월 11일 22:00에 태어난 사람의 실제 명식 —<br>절기·진태양시까지 천문 계산으로 검증한 결정론 엔진의 산출물</p>
-      <span class="lens-go">→ 🔮 사주로 바로 시작</span>
+      <p class="lens-note" data-i18n="lens.sajuNote">1998년 11월 11일 22:00에 태어난 사람의 실제 명식 —<br>절기·진태양시까지 천문 계산으로 검증한 결정론 엔진의 산출물</p>
+      <span class="lens-go" data-i18n="lens.sajuGo">→ 🔮 사주로 바로 시작</span>
     </a>
 
     <span class="times" aria-hidden="true">×</span>
 
     <a class="lens lens-philo rise d1" href="/app?service=philo"
-       aria-label="철학 탐구 바로 시작">
-      <span class="lens-tag"><b>哲</b> · 생각이 놓이는 지식그래프</span>
+       aria-label="철학 탐구 바로 시작" data-i18n-aria="lens.philoAria">
+      <span class="lens-tag" data-i18n="lens.philoTag"><b>哲</b> · 생각이 놓이는 지식그래프</span>
       <svg class="kgraph" viewBox="0 0 300 232" role="img" aria-label="철학 지식그래프 진단 예시 — 생각에서 유사 주장을 거쳐 철학자로">
         <!-- 엣지: 생각→claim(cosine, 점선) / claim→철학자(asserts, 실선) -->
         <line class="e-cos" x1="150" y1="196" x2="78"  y2="128"/>
@@ -258,70 +266,70 @@
         <!-- claim 노드 -->
         <circle class="n-claim" cx="78"  cy="128" r="5"/>
         <circle class="n-claim" cx="222" cy="128" r="5"/>
-        <text class="t-claim" x="66"  y="116" text-anchor="middle">사랑은 풍요</text>
-        <text class="t-claim" x="234" y="116" text-anchor="middle">사랑은 결핍</text>
+        <text class="t-claim" x="66"  y="116" text-anchor="middle" data-i18n="kg.plenty">사랑은 풍요</text>
+        <text class="t-claim" x="234" y="116" text-anchor="middle" data-i18n="kg.lack">사랑은 결핍</text>
         <text class="t-rel" x="106" y="86" text-anchor="middle">asserts</text>
-        <text class="t-rel" x="107" y="170" text-anchor="middle">유사도 .58</text>
+        <text class="t-rel" x="107" y="170" text-anchor="middle" data-i18n="kg.sim">유사도 .58</text>
         <!-- 사용자 생각 노드 -->
         <circle class="n-me" cx="150" cy="196" r="9"/>
-        <text class="t-me" x="150" y="224" text-anchor="middle">당신의 생각</text>
+        <text class="t-me" x="150" y="224" text-anchor="middle" data-i18n="kg.me">당신의 생각</text>
       </svg>
-      <p class="lens-note">"사랑은 풍요와 결핍을 함께 준다"가 실제로 회수한 철학자들 —<br>SEP 지식그래프 3,600노드에서 유사 주장의 실제 저자를 따라갑니다</p>
-      <span class="lens-go">→ 🧭 철학으로 바로 시작</span>
+      <p class="lens-note" data-i18n="lens.philoNote">"사랑은 풍요와 결핍을 함께 준다"가 실제로 회수한 철학자들 —<br>SEP 지식그래프 3,600노드에서 유사 주장의 실제 저자를 따라갑니다</p>
+      <span class="lens-go" data-i18n="lens.philoGo">→ 🧭 철학으로 바로 시작</span>
     </a>
   </div>
 </header>
 
 <section class="section wrap" id="services">
   <span class="sec-eyebrow rise">two services, one platform</span>
-  <h2 class="sec-title rise d1">서비스는 나뉘어 있고,<br>당신의 프로필은 하나입니다</h2>
+  <h2 class="sec-title rise d1" data-i18n="svc.title">서비스는 나뉘어 있고,<br>당신의 프로필은 하나입니다</h2>
 
   <div class="services">
     <article class="svc svc-saju rise">
-      <h3>🔮 사주 운세</h3>
-      <p class="svc-sub">결정론 엔진 + 유파별 해석 + 근거 추적</p>
+      <h3 data-i18n="svc.sajuH3">🔮 사주 운세</h3>
+      <p class="svc-sub" data-i18n="svc.sajuSub">결정론 엔진 + 유파별 해석 + 근거 추적</p>
       <ul>
-        <li>신년운세 · 토정비결 · 애정/궁합 · 재물 · 평생운 · 오늘/주간 · 건강</li>
-        <li>계산은 천문 관측(절기·진태양시·역사적 시간대)으로 교차검증</li>
-        <li>억부·조후·전왕·맹파 — 유파 4종의 관점을 나란히, 갈리는 지점 명시</li>
-        <li>인연 매칭 — 후보 궁합 랭킹, 연도 범위에서 Best 사주 역산</li>
+        <li data-i18n="svc.saju1">신년운세 · 토정비결 · 애정/궁합 · 재물 · 평생운 · 오늘/주간 · 건강</li>
+        <li data-i18n="svc.saju2">계산은 천문 관측(절기·진태양시·역사적 시간대)으로 교차검증</li>
+        <li data-i18n="svc.saju3">억부·조후·전왕·맹파 — 유파 4종의 관점을 나란히, 갈리는 지점 명시</li>
+        <li data-i18n="svc.saju4">인연 매칭 — 후보 궁합 랭킹, 연도 범위에서 Best 사주 역산</li>
       </ul>
-      <a class="svc-go" href="/app?service=saju">→ 생년월일시로 시작</a>
+      <a class="svc-go" href="/app?service=saju" data-i18n="svc.sajuGo">→ 생년월일시로 시작</a>
     </article>
 
     <article class="svc svc-philo rise d1">
-      <h3>🧭 철학 탐구</h3>
-      <p class="svc-sub">graphRAG 가치관 진단 — PhiloGraph 지식그래프</p>
+      <h3 data-i18n="svc.philoH3">🧭 철학 탐구</h3>
+      <p class="svc-sub" data-i18n="svc.philoSub">graphRAG 가치관 진단 — PhiloGraph 지식그래프</p>
       <ul>
-        <li>생각을 핵심 명제로 분해해 각각 탐색 — 긴 생각도 뭉개지지 않게</li>
-        <li>SEP 지식그래프 3,600노드 · 8,397엣지에서 유사 주장 회수 + 이웃 확장</li>
-        <li>유사 주장의 실제 저자(asserts)를 따라 철학자 랭킹 — 원문 인용 근거 동반</li>
-        <li>나와 닮은 영혼 — 철학자 분포가 겹치는 사용자 연결</li>
+        <li data-i18n="svc.philo1">생각을 핵심 명제로 분해해 각각 탐색 — 긴 생각도 뭉개지지 않게</li>
+        <li data-i18n="svc.philo2">SEP 지식그래프 3,600노드 · 8,397엣지에서 유사 주장 회수 + 이웃 확장</li>
+        <li data-i18n="svc.philo3">유사 주장의 실제 저자(asserts)를 따라 철학자 랭킹 — 원문 인용 근거 동반</li>
+        <li data-i18n="svc.philo4">나와 닮은 영혼 — 철학자 분포가 겹치는 사용자 연결</li>
       </ul>
-      <a class="svc-go" href="/app?service=philo">→ 한 문장의 가치관으로 시작</a>
+      <a class="svc-go" href="/app?service=philo" data-i18n="svc.philoGo">→ 한 문장의 가치관으로 시작</a>
     </article>
   </div>
 </section>
 
 <section class="creed" id="creed">
   <div class="wrap">
-    <p class="creed-quote rise">「<span class="v">계산</span>은 정답이 있고,<br class="m"> <span class="a">해석</span>은 정답이 없다」</p>
-    <p class="creed-src rise d1">— 이 플랫폼을 관통하는 한 문장</p>
+    <p class="creed-quote rise" data-i18n="creed.quote">「<span class="v">계산</span>은 정답이 있고,<br class="m"> <span class="a">해석</span>은 정답이 없다」</p>
+    <p class="creed-src rise d1" data-i18n="creed.src">— 이 플랫폼을 관통하는 한 문장</p>
     <div class="creed-grid">
       <div class="creed-item rise">
         <span class="hanja-key">分</span>
-        <h4>계산과 해석의 분리</h4>
-        <p>팔자·대운·괘는 결정론으로 산출하고 천문 oracle 로 교차검증합니다. 철학자 랭킹도 그래프 회수의 결정론 집계 — LLM 서술이 계산을 오염시키지 않습니다.</p>
+        <h4 data-i18n="creed.h1">계산과 해석의 분리</h4>
+        <p data-i18n="creed.p1">팔자·대운·괘는 결정론으로 산출하고 천문 oracle 로 교차검증합니다. 철학자 랭킹도 그래프 회수의 결정론 집계 — LLM 서술이 계산을 오염시키지 않습니다.</p>
       </div>
       <div class="creed-item rise d1">
         <span class="hanja-key">據</span>
-        <h4>모든 풀이에 근거</h4>
-        <p>사주 리포트의 모든 문장은 출처(trace)를 동반하고, 리포트 아래 「이 풀이의 근거」 푸터로 사용된 값을 공개합니다. 철학 진단은 SEP 원문 인용을 근거로 답합니다.</p>
+        <h4 data-i18n="creed.h2">모든 풀이에 근거</h4>
+        <p data-i18n="creed.p2">사주 리포트의 모든 문장은 출처(trace)를 동반하고, 리포트 아래 「이 풀이의 근거」 푸터로 사용된 값을 공개합니다. 철학 진단은 SEP 원문 인용을 근거로 답합니다.</p>
       </div>
       <div class="creed-item rise d2">
         <span class="hanja-key">竝</span>
-        <h4>관점의 병렬</h4>
-        <p>하나의 결론을 강요하지 않습니다. 유파별 · 사상별 관점을 나란히 놓고, 합의되는 부분과 갈리는 부분을 먼저 드러냅니다.</p>
+        <h4 data-i18n="creed.h3">관점의 병렬</h4>
+        <p data-i18n="creed.p3">하나의 결론을 강요하지 않습니다. 유파별 · 사상별 관점을 나란히 놓고, 합의되는 부분과 갈리는 부분을 먼저 드러냅니다.</p>
       </div>
     </div>
   </div>
@@ -329,27 +337,27 @@
 
 <section class="connect wrap" id="connect">
   <span class="sec-eyebrow rise">connect</span>
-  <h2 class="sec-title rise d1">혼자 읽는 나에서,<br>함께 읽는 우리로</h2>
-  <p class="desc rise d2">한 번의 로그인으로 두 서비스의 프로필이 이어집니다.
+  <h2 class="sec-title rise d1" data-i18n="conn.title">혼자 읽는 나에서,<br>함께 읽는 우리로</h2>
+  <p class="desc rise d2" data-i18n="conn.desc">한 번의 로그인으로 두 서비스의 프로필이 이어집니다.
     태어난 시간의 인연은 <b>궁합</b>으로, 생각의 인연은 <b>철학 유사도</b>로 —
     나와 닮은 사람을 두 렌즈 모두로 찾아보세요.</p>
   <div class="connect-badges rise d3">
-    <span class="badge badge-saju"><b>💘 궁합 매칭</b> — 일간·일지·띠·오행보완 (결정론)</span>
-    <span class="badge badge-philo"><b>🤝 닮은 영혼</b> — top 철학자 분포 코사인 (결정론)</span>
+    <span class="badge badge-saju" data-i18n="conn.badgeSaju"><b>💘 궁합 매칭</b> — 일간·일지·띠·오행보완 (결정론)</span>
+    <span class="badge badge-philo" data-i18n="conn.badgePhilo"><b>🤝 닮은 영혼</b> — top 철학자 분포 코사인 (결정론)</span>
   </div>
 </section>
 
 <section class="final wrap">
-  <h2 class="sec-title rise">이제, 당신 차례입니다</h2>
+  <h2 class="sec-title rise" data-i18n="final.title">이제, 당신 차례입니다</h2>
   <div class="hero-cta rise d1" style="margin-top:30px">
-    <a class="btn btn-primary" href="/app">탐구 시작하기</a>
+    <a class="btn btn-primary" href="/app" data-i18n="final.cta">탐구 시작하기</a>
   </div>
 </section>
 
 <footer>
   <div class="wrap foot-in">
-    <span>哲命 — 철학 × 사주 플랫폼 · 재미와 자기 성찰을 위한 서비스입니다. 중요한 결정은 언제나 당신의 몫.</span>
-    <span><a href="https://github.com/zeenoo11/philosophy_app" rel="noopener">GitHub</a> · Chainlit + FastAPI + 결정론 사주 엔진</span>
+    <span data-i18n="foot.left">哲命 — 철학 × 사주 플랫폼 · 재미와 자기 성찰을 위한 서비스입니다. 중요한 결정은 언제나 당신의 몫.</span>
+    <span data-i18n="foot.right"><a href="https://github.com/zeenoo11/philosophy_app" rel="noopener">GitHub</a> · Chainlit + FastAPI + 결정론 사주 엔진</span>
   </div>
 </footer>
 
@@ -361,6 +369,109 @@
   document.querySelectorAll(".rise").forEach(el => io.observe(el));
   // 스로틀된 탭 등에서 스탬프 애니메이션이 시작되지 못해도 도장은 보이게
   setTimeout(() => { const s = document.querySelector(".seal"); if (s) s.style.opacity = ".92"; }, 2500);
+</script>
+
+<script>
+  // ── KO/EN 토글 — KO 원문은 DOM 이 원본(스냅숏), EN 은 아래 사전. localStorage("cm.lang") 로 지속되어
+  //    /app 셸과 공유된다. ?lang=en|ko 로 강제 가능(공유 링크용). 사주 용어는 영어 의역 표기.
+  const EN = {
+    "nav.services": "Services", "nav.creed": "Principles", "nav.connect": "Connect",
+    "nav.me": "My records", "nav.cta": "Start",
+    "hero.h1": 'Reading yourself<br><span class="two">through two lenses</span>',
+    "hero.sub": 'Eastern Saju reads <strong>the moment you were born</strong>; Western philosophy reads ' +
+      '<strong>the thoughts you’ve lived</strong>.<br>Delphi’s “Know thyself” and Saju’s 知命 — ' +
+      'two gazes, opposite in direction, gathered in one place.',
+    "hero.ctaMain": "Begin exploring", "hero.ctaCreed": "Our principles",
+    "lens.sajuAria": "Start Saju fortune right away",
+    "lens.sajuTag": '<b>命</b> · Eight characters of the moment you were born',
+    "ms.p1s": "Year · Seven Killings", "ms.p1k": "Mu-in",
+    "ms.p2s": "Month · Rob Wealth", "ms.p2k": "Gye-hae",
+    "ms.p3s": "Day · Day Master", "ms.p3k": "Im-sul",
+    "ms.p4s": "Hour · Direct Resource", "ms.p4k": "Sin-hae",
+    "lens.sajuNote": 'The real chart of someone born Nov 11, 1998 at 22:00 —<br>computed by a deterministic ' +
+      'engine, astronomically verified down to solar terms and true solar time',
+    "lens.sajuGo": "→ 🔮 Start with Saju",
+    "lens.philoAria": "Start philosophical inquiry right away",
+    "lens.philoTag": '<b>哲</b> · A knowledge graph where your thinking lands',
+    "kg.plenty": "Love as plenty", "kg.lack": "Love as lack",
+    "kg.sim": "similarity .58", "kg.me": "your thought",
+    "lens.philoNote": 'Philosophers actually retrieved for “love gives both plenty and lack” —<br>' +
+      'following the real authors of similar claims across a 3,600-node SEP knowledge graph',
+    "lens.philoGo": "→ 🧭 Start with Philosophy",
+    "svc.title": 'Two separate services,<br>one profile — yours',
+    "svc.sajuH3": "🔮 Saju Fortune",
+    "svc.sajuSub": "Deterministic engine + interpretation by school + evidence tracing",
+    "svc.saju1": "New-year luck · Tojeong Bigyeol · Love & compatibility · Wealth · Lifetime · Today & weekly · Health",
+    "svc.saju2": "Every calculation cross-checked against astronomy — solar terms, true solar time, historical time zones",
+    "svc.saju3": "Four schools — Eokbu · Johu · Jeonwang · Maengpa — side by side, disagreements made explicit",
+    "svc.saju4": "Match-making — rank candidates by compatibility, reverse-search the best chart across birth years",
+    "svc.sajuGo": "→ Start with your birth date & time",
+    "svc.philoH3": "🧭 Philosophical Inquiry",
+    "svc.philoSub": "graphRAG value diagnosis — the PhiloGraph knowledge graph",
+    "svc.philo1": "Your thought is split into core claims, each explored on its own — long thoughts don’t get flattened",
+    "svc.philo2": "Similar claims retrieved from a 3,600-node · 8,397-edge SEP graph, then expanded through neighbors",
+    "svc.philo3": "Philosophers ranked by who actually asserts those claims — with source quotations as evidence",
+    "svc.philo4": "Kindred souls — connect with users whose philosopher distributions overlap yours",
+    "svc.philoGo": "→ Start with one sentence of what you believe",
+    "creed.quote": '「<span class="v">Calculation</span> has right answers;<br class="m"> <span class="a">interpretation</span> has none」',
+    "creed.src": "— the one sentence running through this platform",
+    "creed.h1": "Calculation apart from interpretation",
+    "creed.p1": "Pillars, luck cycles, and hexagrams are computed deterministically and cross-checked by an " +
+      "astronomical oracle. Philosopher rankings are deterministic tallies of graph retrieval — " +
+      "LLM prose never contaminates the math.",
+    "creed.h2": "Every reading carries its evidence",
+    "creed.p2": "Every sentence of a Saju report carries a trace, and a footer beneath each report discloses " +
+      "the values it used. Philosophy diagnoses answer with quotations from the SEP itself.",
+    "creed.h3": "Perspectives in parallel",
+    "creed.p3": "No single conclusion is forced. Schools and philosophies sit side by side — " +
+      "where they agree, and where they part, shown first.",
+    "conn.title": 'From reading yourself alone<br>to reading each other together',
+    "conn.desc": 'One login joins your profile across both services. Bonds of birth time through <b>compatibility</b>, ' +
+      'bonds of thought through <b>philosophical similarity</b> — find the people most like you, through both lenses.',
+    "conn.badgeSaju": '<b>💘 Compatibility match</b> — day stem & branch, zodiac, element balance (deterministic)',
+    "conn.badgePhilo": '<b>🤝 Kindred souls</b> — cosine over top-philosopher distributions (deterministic)',
+    "final.title": "Now it’s your turn", "final.cta": "Begin exploring",
+    "foot.left": '哲命 — a philosophy × saju platform, for fun and self-reflection. The big decisions are always yours.',
+    "foot.right": '<a href="https://github.com/zeenoo11/philosophy_app" rel="noopener">GitHub</a> · Chainlit + FastAPI + a deterministic Saju engine',
+  };
+  const META_EN = {
+    title: "哲命 — Two Lenses for Reading Yourself",
+    desc: "Eastern Saju reads the moment you were born; Western philosophy reads the thoughts you have lived. " +
+      "Saju fortune and philosophical inquiry in one place.",
+    meTitle: "Your saved explorations (login account)",
+  };
+  const KO_HTML = {}, KO_ARIA = {};
+  const KO_META = { title: document.title,
+                    desc: document.querySelector('meta[name="description"]').content,
+                    meTitle: document.getElementById("navMe").title };
+  const isSvg = el => el.namespaceURI === "http://www.w3.org/2000/svg";
+  function applyLang(lang) {
+    document.documentElement.lang = lang === "en" ? "en" : "ko";
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const k = el.dataset.i18n;
+      if (!(k in KO_HTML)) KO_HTML[k] = isSvg(el) ? el.textContent : el.innerHTML;
+      const v = lang === "en" ? EN[k] : KO_HTML[k];
+      if (v == null) return;
+      if (isSvg(el)) el.textContent = v; else el.innerHTML = v;
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach(el => {
+      const k = el.dataset.i18nAria;
+      if (!(k in KO_ARIA)) KO_ARIA[k] = el.getAttribute("aria-label");
+      el.setAttribute("aria-label", lang === "en" && EN[k] ? EN[k] : KO_ARIA[k]);
+    });
+    document.title = lang === "en" ? META_EN.title : KO_META.title;
+    document.querySelector('meta[name="description"]').content = lang === "en" ? META_EN.desc : KO_META.desc;
+    document.getElementById("navMe").title = lang === "en" ? META_EN.meTitle : KO_META.meTitle;
+    document.getElementById("langKo").classList.toggle("on", lang !== "en");
+    document.getElementById("langEn").classList.toggle("on", lang === "en");
+    try { localStorage.setItem("cm.lang", lang); } catch (e) { /* 사생활 모드 등 */ }
+  }
+  const qsLang = new URLSearchParams(location.search).get("lang");
+  let savedLang = null;
+  try { savedLang = localStorage.getItem("cm.lang"); } catch (e) {}
+  applyLang(qsLang === "en" ? "en" : qsLang === "ko" ? "ko" : (savedLang || "ko"));
+  document.getElementById("langBtn").addEventListener("click", () =>
+    applyLang(document.documentElement.lang === "en" ? "ko" : "en"));
 </script>
 </body>
 </html>

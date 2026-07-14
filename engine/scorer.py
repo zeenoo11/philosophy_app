@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from engine import constants as C
+from engine.i18n import stem_en, t, term
 from engine.interp_types import StrengthResult, relation
 from engine.provenance import Claim, Trace
 
@@ -92,9 +93,14 @@ def score_strength(chart: Chart, weights: dict | None = None,
     )
     dm_name = C.CHEONGAN_HANGUL[chart.day_master]
     claim = Claim(
-        claim=(f"일간 {dm_name}({C.OHAENG_HANGUL[dm_el]})은(는) 통근·부조 비율 "
-               f"{ratio:.2f}로 {strength}"
-               f"{' (득령)' if deukryeong else ' (실령)'}."),
+        claim=t(
+            (f"일간 {dm_name}({C.OHAENG_HANGUL[dm_el]})은(는) 통근·부조 비율 "
+             f"{ratio:.2f}로 {strength}"
+             f"{' (득령)' if deukryeong else ' (실령)'}."),
+            (f"The Day Master {stem_en(dm_name)} ({term(C.OHAENG_HANGUL[dm_el])}) "
+             f"shows a rooting-and-support ratio of {ratio:.2f} — {term(strength)}"
+             f"{' (in season)' if deukryeong else ' (out of season)'}."),
+        ),
         trace=trace,
     )
     return StrengthResult(strength=strength, score=score, total=total, ratio=ratio,

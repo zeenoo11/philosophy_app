@@ -20,6 +20,7 @@ from datetime import date, timedelta
 
 from engine import constants as C
 from engine.compatibility import gunghap_charts
+from engine.i18n import ganji_en, t, zodiac_en
 from engine.pillars import BirthInput, compute_chart
 from engine.provenance import Trace
 
@@ -45,7 +46,7 @@ def _row(label: str, birth: BirthInput, res: dict) -> dict:
 
 def _birth_label(b: BirthInput, with_hour: bool) -> str:
     s = f"{b.year}-{b.month:02d}-{b.day:02d}"
-    return f"{s} {b.hour:02d}시" if with_hour else s
+    return t(f"{s} {b.hour:02d}시", f"{s} {b.hour:02d}:00") if with_hour else s
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -121,9 +122,11 @@ def best_in_year_range(
             cc = compute_chart(cb)
             res = gunghap_charts(me_chart, cc)
             tie = (d.year, d.month, d.day, h)
-            scored.append(
-                (res["총점"], tie, cb, cc.day.name, C.JIJI_HANGUL[cc.year.branch], res)
-            )
+            # 일주·띠 이름은 표시 전용(요약 분포 키) — 생성 시점에 언어 반영
+            ilju_name = t(cc.day.name, ganji_en(cc.day.name))
+            tti_name = t(C.JIJI_HANGUL[cc.year.branch],
+                         zodiac_en(C.JIJI_ANIMAL[cc.year.branch]))
+            scored.append((res["총점"], tie, cb, ilju_name, tti_name, res))
 
     scored.sort(key=lambda x: (-x[0], x[1]))
     best_score = scored[0][0]

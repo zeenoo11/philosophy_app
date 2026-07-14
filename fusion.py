@@ -11,21 +11,31 @@ LLM 은 두 렌즈의 값 '안에서만' 공명/긴장을 서술하고, 근거 �
 from __future__ import annotations
 
 from engine import store as saju_store
+from engine.i18n import ganji_en, is_en, stem_en, t, term
 from engine.interpret import interpret
 from engine.reports import DEFAULT_PRESET
 from philosophy import store as philo_store
 
 FUSION_TITLE = "🔗 두 렌즈로 본 나 — 사주 × 철학"
+FUSION_TITLE_EN = "🔗 Me Through Two Lenses — Saju × Philosophy"
+
+
+def fusion_title() -> str:
+    """표시용 제목 — 언어 인지(표시 시점 호출). app.py 는 FUSION_TITLE 대신 이걸 쓸 것."""
+    return t(FUSION_TITLE, FUSION_TITLE_EN)
 
 
 def missing_parts(username: str) -> list[str]:
     """통합 리포트에 부족한 재료 목록 — 비어 있으면 생성 가능."""
     missing = []
     if saju_store.get_profile(username) is None:
-        missing.append("사주 프로필(🔮 프로필에서 생년월일시 입력)")
+        missing.append(t("사주 프로필(🔮 프로필에서 생년월일시 입력)",
+                         "saju profile (enter your birth date/time in the 🔮 profile)"))
     diag = philo_store.get_diagnosis(username)
     if not diag or not diag.get("top_philosophers"):
-        missing.append("철학 진단(🧭 프로필에서 가치관 한 문장)")
+        missing.append(t("철학 진단(🧭 프로필에서 가치관 한 문장)",
+                         "philosophy diagnosis (share one sentence about your values "
+                         "in the 🧭 profile)"))
     return missing
 
 
@@ -58,13 +68,40 @@ def gather_facts(username: str) -> dict | None:
     }
 
 
+# ── 표시 변환(EN 전용) — facts 내부 값은 한국어 정체성 키 그대로 두고,
+#    표시(표·프롬프트·푸터) 직전에만 로마자/영어 용어로 바꾼다(i18n 규약).
+def _eight_chars_disp(eight_chars: str) -> str:
+    """팔자 표시 — en 이면 간지 로마자('무인 계해 …' → 'Mu-in Gye-hae …')."""
+    if not is_en():
+        return eight_chars
+    return " ".join(ganji_en(g) for g in eight_chars.split())
+
+
+def _day_master_disp(day_master: str) -> str:
+    """일간 표시 — '임(수)' → en 'Im (Water)'. 형식이 다르면 원문 그대로."""
+    if not is_en():
+        return day_master
+    if len(day_master) == 4 and day_master[1] == "(" and day_master[3] == ")":
+        return f"{stem_en(day_master[0])} ({term(day_master[2])})"
+    return day_master
+
+
+def _gender_disp(gender: str | None) -> str:
+    return term(gender) if gender else t("성별 미지정", "gender unspecified")
+
+
 def _yongsin_str(s: dict) -> str:
     ys = s.get("yongsin") or {}
+    if is_en():
+        return (f"{term(ys.get('element', '?'))} energy ({term(ys.get('family', '?'))})"
+                if ys else "unknown")
     return f"{ys.get('element', '?')} 기운({ys.get('family', '?')})" if ys else "미상"
 
 
 def fusion_summary_table(facts: dict) -> str:
     """맨 앞의 '한눈에 보기' 표 — 결정론 값만, 시스템이 생성(LLM 비관여)."""
+    if is_en():
+        return _fusion_summary_table_en(facts)
     s, p = facts["saju"], facts["philo"]
     b = facts["birth"]
     tops = p["top_philosophers"]
@@ -86,7 +123,33 @@ def fusion_summary_table(facts: dict) -> str:
     ])
 
 
+def _fusion_summary_table_en(facts: dict) -> str:
+    """영어판 '한눈에 보기' 표 — 값은 i18n 로마자/용어로만(한글 없음)."""
+    s, p = facts["saju"], facts["philo"]
+    b = facts["birth"]
+    tops = p["top_philosophers"]
+    phils = " · ".join(t.get("label", "?") for t in tops[:3])
+    n_support = sum(int(t.get("n_support") or 0) for t in tops)
+    q = (p["query"] or "").strip()
+    if len(q) > 42:
+        q = q[:42] + "…"
+    return "\n".join([
+        "## 📋 At a Glance",
+        "",
+        "| | 🔮 命 — Saju Lens | 🧭 哲 — Philosophy Lens |",
+        "|---|---|---|",
+        f"| Input | {b.year}-{b.month:02d}-{b.day:02d} {b.hour:02d}:{b.minute:02d}"
+        f" ({_gender_disp(facts.get('gender'))}) | “{q}” |",
+        f"| Core | Eight characters {_eight_chars_disp(s['eight_chars'])} · Day Master "
+        f"{_day_master_disp(s['day_master'])} | Closest philosophers: {phils} |",
+        f"| My grain | {term(s.get('strength') or '?')} · Useful god {_yongsin_str(s)} | "
+        f"Grounded in {n_support} similar claims (SEP knowledge graph) |",
+    ])
+
+
 def build_fusion_prompt(facts: dict) -> str:
+    if is_en():
+        return _build_fusion_prompt_en(facts)
     s, p = facts["saju"], facts["philo"]
     yongsin_str = _yongsin_str(s)
     phil_lines = "\n".join(
@@ -137,8 +200,68 @@ SEP 철학 지식그래프에서 진단한 결과다. 두 렌즈의 값 안에�
 - 단정 대신 '∼한 결이 있어요' 수준의 어조. 참고자료 목록은 시스템이 따로 붙이므로 쓰지 말 것."""
 
 
+def _build_fusion_prompt_en(facts: dict) -> str:
+    """영어판 통합 프롬프트 — 섹션 구조는 한국어판과 동일, 출력은 한글/CJK 금지."""
+    s, p = facts["saju"], facts["philo"]
+    yongsin_str = _yongsin_str(s)
+    elements = " · ".join(f"{term(k)} {v}" for k, v in s["elements"].items())
+    phil_lines = "\n".join(
+        f"- {t.get('label')} (score {t.get('score')}, {t.get('n_support')} similar claims)"
+        for t in p["top_philosophers"])
+    return f"""You are an integrative interpreter who reads Eastern Four Pillars (Saju) and Western philosophy together.
+The [Saju lens] below holds deterministically computed values; the [Philosophy lens] holds
+the diagnosis of the user's values statement against the SEP philosophy knowledge graph.
+Stay strictly within the values of these two lenses.
+
+[Saju lens — the grain you were born with]
+- Eight characters: {_eight_chars_disp(s['eight_chars'])} · Day Master {_day_master_disp(s['day_master'])}
+- Five-element distribution: {elements}
+- Strength: {term(s.get('strength') or '?')} · Useful god (most helpful energy): {yongsin_str}
+- Temperament hint (internal note in Korean — restate its meaning in English, never quote it): {s['nature_hint']}
+
+[Philosophy lens — the thinking you have lived]
+- Values statement: "{p['query']}"
+- Closest philosophers:
+{phil_lines}
+
+Using exactly the section titles below, write an integrated report of 'one person'
+(the summary table is already prepended by the system — do not create another):
+
+## 🤝 Where the Two Lenses Overlap
+First arrange 2-3 points of resonance as a markdown table in this format:
+
+| In the Saju | In the Philosophy | Where They Meet |
+|---|---|---|
+
+Below the table, unpack it naturally in 3-5 sentences, quoting values from both lenses directly.
+
+## ⚡ Where the Two Lenses Diverge
+In 4-6 sentences, honestly name where the inborn grain (Saju) and the lived thinking
+(philosophy) are in tension. If the tension is weak, say it is weak.
+
+## 🪞 Reading Them as One
+In one paragraph (4-6 sentences), synthesize how the lived thinking has settled over the
+inborn grain to become the present 'me'. Mention how the useful god ({yongsin_str})
+connects with the philosophical leaning.
+
+## 🌱 One Step Forward
+A numbered list of exactly 2 items — practical suggestions, item 1 explicitly grounded in
+the Saju, item 2 explicitly grounded in the philosophy.
+
+Writing rules (must be followed):
+- Write the entire report in natural English. Do not output any Korean (Hangul), Chinese,
+  or other CJK characters — refer to Saju terms only by the English names given above.
+- Never use asterisk bold (** **). If emphasis is needed, wrap words in 'single quotes'.
+- Refer to philosophers by name. Do not invent facts absent from the lens values above
+  (no other pillars, no other philosophers, no concrete event predictions).
+- Prefer a soft, suggestive tone ('there is a grain of ...') over flat assertions.
+- Do not write a reference list — the system appends one separately."""
+
+
 def fusion_footer(facts: dict) -> str:
     """결정론 근거 푸터 — LLM 비관여(사주 리포트와 같은 규약)."""
+    if is_en():
+        return _fusion_footer_en(facts)
     s, p = facts["saju"], facts["philo"]
     b = facts["birth"]
     ys = s["yongsin"]
@@ -148,3 +271,18 @@ def fusion_footer(facts: dict) -> str:
             f"팔자 {s['eight_chars']} · {s['strength']} · 용신 {ys.get('element', '?')} · "
             f"기준 유파 표준(정통 억부) / 哲: \"{(p['query'] or '')[:40]}…\" → "
             f"{phils} (SEP 지식그래프 회수) · 두 값은 각 프로필에서 언제든 재현 가능")
+
+
+def _fusion_footer_en(facts: dict) -> str:
+    """영어판 근거 푸터 — 값은 i18n 로마자/용어로만(한글 없음)."""
+    s, p = facts["saju"], facts["philo"]
+    b = facts["birth"]
+    ys = s["yongsin"]
+    phils = ", ".join(t.get("label", "?") for t in p["top_philosophers"][:3])
+    return (f"\n\n---\n> 📎 **Sources of this report** — 命: {b.year}-{b.month:02d}-{b.day:02d} "
+            f"{b.hour:02d}:{b.minute:02d} ({_gender_disp(facts.get('gender'))}) · "
+            f"eight characters {_eight_chars_disp(s['eight_chars'])} · "
+            f"{term(s.get('strength') or '?')} · useful god {term(ys.get('element', '?'))} · "
+            f"reference school Standard (Classic Eokbu) / 哲: \"{(p['query'] or '')[:40]}…\" → "
+            f"{phils} (retrieved from the SEP knowledge graph) · both values can be "
+            f"reproduced anytime from your profiles")

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from engine import constants as C
+from engine.i18n import branch_en, stem_en, t, term, zodiac_en
 from engine.interp_types import element_presence
 from engine.pillars import BirthInput, Chart, compute_chart
 from engine.provenance import Trace
@@ -23,14 +24,14 @@ def _day_master_relation(a_dm: int, b_dm: int) -> tuple[str, int]:
     a_el = C.CHEONGAN_OHAENG[a_dm]
     b_el = C.CHEONGAN_OHAENG[b_dm]
     if frozenset({a_dm, b_dm}) in C.CHEONGAN_HAP:
-        return "천간합", 95
+        return t("천간합", "Stem combine"), 95
     if C.saeng(a_el) == b_el or C.saeng(b_el) == a_el:   # 서로 생(生)
-        return "상생", 85
+        return t("상생", "Mutual support"), 85
     if a_el == b_el:                                       # 같은 오행 → 비화
-        return "비화", 75
+        return t("비화", "Same element"), 75
     if C.geuk(a_el) == b_el or C.geuk(b_el) == a_el:      # 서로 극(剋)
-        return "상극", 45
-    return "무관", 50
+        return t("상극", "Mutual conflict"), 45
+    return t("무관", "Neutral"), 50
 
 
 def _samhap_guk(branch: int) -> str | None:
@@ -45,29 +46,29 @@ def _tti_relation(a_br: int, b_br: int) -> tuple[str, int]:
     """띠(년지) 관계 → (label, 부분점수)."""
     pair = frozenset({a_br, b_br})
     if pair in C.JIJI_YUKHAP:
-        return "육합", 85
+        return t("육합", "Six-harmony"), 85
     ga, gb = _samhap_guk(a_br), _samhap_guk(b_br)
     if ga is not None and ga == gb and a_br != b_br:     # 같은 삼합국
-        return "삼합", 85
+        return t("삼합", "Three-harmony"), 85
     if pair in C.JIJI_CHUNG:
-        return "육충", 40
+        return t("육충", "Clash"), 40
     if pair in C.HYEONG_PAIRS:
-        return "형", 45
-    return "무관", 60
+        return t("형", "Punishment"), 45
+    return t("무관", "Neutral"), 60
 
 
 def _ilji_relation(a_br: int, b_br: int) -> tuple[str, int]:
     """일지(배우자궁) 관계 → (label, 부분점수)."""
     pair = frozenset({a_br, b_br})
     if pair in C.JIJI_YUKHAP:
-        return "육합", 90
+        return t("육합", "Six-harmony"), 90
     if pair in C.JIJI_CHUNG:
-        return "육충", 35
+        return t("육충", "Clash"), 35
     if pair in C.HYEONG_PAIRS:
-        return "형", 45
+        return t("형", "Punishment"), 45
     if a_br == b_br:
-        return "같음", 70
-    return "무관", 60
+        return t("같음", "Same branch"), 70
+    return t("무관", "Neutral"), 60
 
 
 def _ohaeng_complement(pa: list[int], pb: list[int]) -> tuple[str, int, list[str]]:
@@ -80,7 +81,7 @@ def _ohaeng_complement(pa: list[int], pb: list[int]) -> tuple[str, int, list[str
         a_lacks = pa[el] <= 1 and pb[el] >= 3
         b_lacks = pb[el] <= 1 and pa[el] >= 3
         if a_lacks or b_lacks:
-            pairs.append(C.OHAENG_HANGUL[el])
+            pairs.append(term(C.OHAENG_HANGUL[el]))
     n = len(pairs)
     if n >= 2:
         score = 88
@@ -88,7 +89,7 @@ def _ohaeng_complement(pa: list[int], pb: list[int]) -> tuple[str, int, list[str
         score = 70
     else:
         score = 50
-    label = "상호보완" if n >= 1 else "보완없음"
+    label = t("상호보완", "Complementary") if n >= 1 else t("보완없음", "No complement")
     return label, score, pairs
 
 
@@ -97,12 +98,12 @@ def _ohaeng_complement(pa: list[int], pb: list[int]) -> tuple[str, int, list[str
 # ─────────────────────────────────────────────────────────────────────────
 def _grade(total: int) -> str:
     if total >= 80:
-        return "천생연분"
+        return t("천생연분", "Match made in heaven")
     if total >= 65:
-        return "좋은 궁합"
+        return t("좋은 궁합", "Great match")
     if total >= 50:
-        return "무난"
-    return "노력 필요"
+        return t("무난", "Decent match")
+    return t("노력 필요", "Needs effort")
 
 
 def gunghap(birth_a: BirthInput, birth_b: BirthInput) -> dict:
@@ -132,17 +133,27 @@ def gunghap_charts(ca: Chart, cb: Chart) -> dict:
                   + tti_score * 0.2 + oh_score * 0.2)
     grade = _grade(total)
 
-    # 근거 (한 줄 설명들)
+    # 근거 (한 줄 설명들) — 표시 문자열이므로 생성 시점에 언어 반영(t)
+    a_dm_h, b_dm_h = C.CHEONGAN_HANGUL[a_dm], C.CHEONGAN_HANGUL[b_dm]
+    a_yb, b_yb = ca.year.branch, cb.year.branch
+    a_db, b_db = ca.day.branch, cb.day.branch
     geungeo = [
-        f"일간 {C.CHEONGAN_HANGUL[a_dm]}·{C.CHEONGAN_HANGUL[b_dm]} → {dm_label}({dm_score})",
-        f"띠 {C.JIJI_HANGUL[ca.year.branch]}·{C.JIJI_HANGUL[cb.year.branch]} → {tti_label}({tti_score})",
-        f"일지 {C.JIJI_HANGUL[ca.day.branch]}·{C.JIJI_HANGUL[cb.day.branch]} → {ilji_label}({ilji_score})",
+        t(f"일간 {a_dm_h}·{b_dm_h} → {dm_label}({dm_score})",
+          f"Day Masters {stem_en(a_dm_h)}·{stem_en(b_dm_h)} → {dm_label} ({dm_score})"),
+        t(f"띠 {C.JIJI_HANGUL[a_yb]}·{C.JIJI_HANGUL[b_yb]} → {tti_label}({tti_score})",
+          f"Zodiac signs {zodiac_en(C.JIJI_ANIMAL[a_yb])}·{zodiac_en(C.JIJI_ANIMAL[b_yb])}"
+          f" → {tti_label} ({tti_score})"),
+        t(f"일지 {C.JIJI_HANGUL[a_db]}·{C.JIJI_HANGUL[b_db]} → {ilji_label}({ilji_score})",
+          f"Day Branches {branch_en(C.JIJI_HANGUL[a_db])}·{branch_en(C.JIJI_HANGUL[b_db])}"
+          f" → {ilji_label} ({ilji_score})"),
     ]
     if oh_pairs:
-        geungeo.append(f"오행보완 {'·'.join(oh_pairs)} → {oh_label}({oh_score})")
+        geungeo.append(t(f"오행보완 {'·'.join(oh_pairs)} → {oh_label}({oh_score})",
+                         f"Element complement {'·'.join(oh_pairs)} → {oh_label} ({oh_score})"))
     else:
-        geungeo.append(f"오행보완 없음 → {oh_label}({oh_score})")
-    geungeo.append(f"총점 {total} → {grade}")
+        geungeo.append(t(f"오행보완 없음 → {oh_label}({oh_score})",
+                         f"No element complement → {oh_label} ({oh_score})"))
+    geungeo.append(t(f"총점 {total} → {grade}", f"Total {total} → {grade}"))
 
     trace = Trace(
         rule_id="gunghap.compose",
@@ -158,8 +169,8 @@ def gunghap_charts(ca: Chart, cb: Chart) -> dict:
     )
 
     return {
-        "a": {"eight_chars": ca.eight_chars(), "일간": C.CHEONGAN_HANGUL[a_dm]},
-        "b": {"eight_chars": cb.eight_chars(), "일간": C.CHEONGAN_HANGUL[b_dm]},
+        "a": {"eight_chars": ca.eight_chars(), "일간": t(a_dm_h, stem_en(a_dm_h))},
+        "b": {"eight_chars": cb.eight_chars(), "일간": t(b_dm_h, stem_en(b_dm_h))},
         "일간관계": {"label": dm_label, "점수": dm_score},
         "띠관계": {"label": tti_label, "점수": tti_score},
         "일지관계": {"label": ilji_label, "점수": ilji_score},

@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from engine import constants as C
+from engine.i18n import t, term
 from engine.interp_types import FAMILIES, element_presence, family_element
 
 # 생애 단계 경계 (세는나이 기준)
@@ -27,6 +28,14 @@ _ELEMENT_JOB = {
     2: ["부동산", "중개", "농업"],
     3: ["금융", "기계", "의료"],
     4: ["유통", "무역", "수산"],
+}
+# 위 직업군의 영어 표기 (hint 표시 전용 — facts 값은 한국어 유지)
+_ELEMENT_JOB_EN = {
+    0: ["education", "publishing", "timber"],
+    1: ["IT", "broadcasting", "food service"],
+    2: ["real estate", "brokerage", "agriculture"],
+    3: ["finance", "machinery", "healthcare"],
+    4: ["distribution", "trade", "fisheries"],
 }
 
 
@@ -135,15 +144,18 @@ def daeun_timeline(chart, daeun: dict | None, yongsin: dict | None = None) -> li
         cheon_fam = C.SIPSIN_FAMILY[cheon_sip]
         cheon_el = C.CHEONGAN_OHAENG[stem]
         if yel is None:
-            favor = "중립"
+            favor = t("중립", "neutral")
         elif cheon_el == yel:
-            favor = "용신과 같은 기운(유리)"
+            favor = t("용신과 같은 기운(유리)",
+                      "same energy as your useful god (favorable)")
         elif cheon_fam == yfam:
-            favor = "용신 계열(유리)"
+            favor = t("용신 계열(유리)",
+                      "same family as your useful god (favorable)")
         else:
-            favor = "중립"
+            favor = t("중립", "neutral")
         out.append({
-            "나이": f"{p['age']}~{p['age'] + 9}세",
+            "나이": t(f"{p['age']}~{p['age'] + 9}세",
+                    f"ages {p['age']}-{p['age'] + 9}"),
             "age": p["age"],
             "간지": p["name"],
             "천간십신": cheon_sip,
@@ -152,7 +164,9 @@ def daeun_timeline(chart, daeun: dict | None, yongsin: dict | None = None) -> li
             "지지가족": C.SIPSIN_FAMILY[ji_sip],
             "천간오행": C.OHAENG_HANGUL[cheon_el],
             "용신부합": favor,
-            "hint": f"{cheon_sip}·{ji_sip} 기운의 10년 ({favor})",
+            "hint": t(f"{cheon_sip}·{ji_sip} 기운의 10년 ({favor})",
+                      f"a decade of {term(cheon_sip)} and {term(ji_sip)} "
+                      f"energy ({favor})"),
         })
     return out
 
@@ -183,11 +197,17 @@ def _hyeongje(chart) -> dict:
     count = _count_family(chart, "비겁")
     positions = _positions_of_family(chart, "비겁")
     if count == 0:
-        hint = "형제·동료의 기운이 옅어 홀로 서는 힘이 두드러져요"
+        hint = t("형제·동료의 기운이 옅어 홀로 서는 힘이 두드러져요",
+                 "the energy of siblings and peers runs faint, so your gift "
+                 "for standing on your own shines through")
     elif count >= 3:
-        hint = f"형제·동료의 기운이 {count}개로 강해 경쟁·협력이 잦은 편"
+        hint = t(f"형제·동료의 기운이 {count}개로 강해 경쟁·협력이 잦은 편",
+                 f"sibling and peer energy is strong ({count} in your chart), "
+                 f"so competition and teamwork come around often")
     else:
-        hint = f"형제·동료와의 인연이 {count}개로 무난한 편"
+        hint = t(f"형제·동료와의 인연이 {count}개로 무난한 편",
+                 f"your ties with siblings and peers sit comfortably "
+                 f"({count} in your chart)")
     return {
         "facts": {"비겁_개수": count, "비겁_위치": positions},
         "hint": hint,
@@ -201,9 +221,14 @@ def _jasik(chart, gender: str | None) -> dict:
     positions = {fam: _positions_of_family(chart, fam) for fam in families}
     total = sum(counts.values())
     if total == 0:
-        hint = "자식성의 기운이 옅어 자녀 인연은 정성으로 가꿀 부분"
+        hint = t("자식성의 기운이 옅어 자녀 인연은 정성으로 가꿀 부분",
+                 "the children star runs faint, so ties with children are "
+                 "something to tend with extra devotion")
     else:
-        hint = f"자식성의 기운이 {total}개로 자녀와의 인연이 살아 있는 편"
+        hint = t(f"자식성의 기운이 {total}개로 자녀와의 인연이 살아 있는 편",
+                 f"the children star appears {total} time"
+                 f"{'s' if total != 1 else ''} in your chart, keeping the "
+                 f"bond with children alive")
     return {
         "facts": {
             "자식성_가족": families,
@@ -222,9 +247,14 @@ def _bubu(chart, gender: str | None) -> dict:
     ilji_sipsin = _ilji_jeonggi_sipsin(chart)
     ilji_branch = C.JIJI_HANGUL[chart.day.branch]
     if present:
-        hint = f"배우자성이 자리해 인연의 기운이 있고, 배우자궁은 '{ilji_sipsin}' 성향"
+        hint = t(f"배우자성이 자리해 인연의 기운이 있고, 배우자궁은 '{ilji_sipsin}' 성향",
+                 f"the spouse star is present, so the energy of partnership "
+                 f"is with you, and your spouse palace leans "
+                 f"'{term(ilji_sipsin)}'")
     else:
-        hint = f"배우자성이 옅어 인연은 적극적으로 찾을 필요, 배우자궁은 '{ilji_sipsin}' 성향"
+        hint = t(f"배우자성이 옅어 인연은 적극적으로 찾을 필요, 배우자궁은 '{ilji_sipsin}' 성향",
+                 f"the spouse star runs faint, so love rewards an active "
+                 f"search; your spouse palace leans '{term(ilji_sipsin)}'")
     return {
         "facts": {
             "배우자성_가족": families,
@@ -255,12 +285,21 @@ def _jigeop(chart) -> dict:
     _DIR = {"관성": "조직·체계 안에서 책임지는",
             "인성": "배움·자격을 바탕으로 한",
             "식상": "표현·재능을 펼치는"}
+    _DIR_EN = {"관성": "work where you carry responsibility within an "
+                     "organization or system",
+               "인성": "work built on learning and credentials",
+               "식상": "work where you express your talents and creativity"}
     if strengths[dominant] == 0:
-        dir_hint = "특정 축에 치우치지 않는 다양한"
+        dir_ko = "특정 축에 치우치지 않는 다양한"
+        dir_en = "a wide range of work, not tied to any single path"
     else:
-        dir_hint = _DIR[dominant]
-    hint = (f"{dir_hint} 일에 인연 · 부족한 '{weak_element}' 기운을 보완하는 "
-            f"{'/'.join(bowan_jobs)} 분야도 도움")
+        dir_ko, dir_en = _DIR[dominant], _DIR_EN[dominant]
+    hint = t(
+        f"{dir_ko} 일에 인연 · 부족한 '{weak_element}' 기운을 보완하는 "
+        f"{'/'.join(bowan_jobs)} 분야도 도움",
+        f"an affinity for {dir_en} · fields like "
+        f"{'/'.join(_ELEMENT_JOB_EN[weak_idx])}, which round out your scarce "
+        f"'{term(weak_element)}' element, also serve you well")
 
     return {
         "facts": {

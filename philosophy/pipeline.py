@@ -11,6 +11,7 @@ import re
 import time
 from dataclasses import dataclass, field
 
+from engine.i18n import is_en, t
 from philosophy import values as schwartz
 from philosophy.decompose import decompose
 from philosophy.diagnose import build_diagnosis, format_diagnosis
@@ -43,6 +44,34 @@ DIAGNOSIS_SYSTEM_PROMPT = """당신은 사용자의 가치관·생각을 철학 
 - 회수 결과에 없는 철학자·주장은 지어내지 말 것. 근거가 약하면 약하다고 밝힐 것.
 - 참고자료·인용 목록은 시스템이 본문 아래에 따로 덧붙이므로 직접 작성하지 말 것.
 - 어조는 사용자의 생각을 존중하며 안내하듯이.
+"""
+
+# 영어 모드용 — 섹션 제목은 format_diagnosis 의 영어 리포트 제목과 정합.
+DIAGNOSIS_SYSTEM_PROMPT_EN = """You are an assistant who locates a user's values and ideas on the map of philosophy.
+The 'retrieval results' below were retrieved from a philosophy knowledge graph (SEP-based) for the user's input.
+Based on them, write a diagnosis with the following sections, in this order, using these exact headings:
+
+## Similar Claims
+Explain, in natural prose, a few of the claims/concepts that connect most closely with the user's idea,
+and where each one resonates with the user's thinking.
+
+## Closest Philosophers
+Focusing on the actual authors of the similar claims, pick the 1-3 closest philosophers and explain
+how each one's position connects with the user's idea.
+
+## Where You Stand
+Synthesize the above into one paragraph interpreting the user's values — which philosophical position
+they stand on, what they prize, and what tensions they carry. If contrasting positions (opposes) appear,
+mention that tension too. If the retrieval results include a 'Value Profile (Schwartz)', weave the top
+1-2 value orientations naturally into the interpretation (never list raw numbers).
+
+Writing rules:
+- Write entirely in natural English. Do not use Korean or any CJK characters.
+- Use a warm, respectful tone that speaks directly to the user.
+- Never use asterisk bold (** **). If emphasis is needed, wrap the phrase in 'single quotes'.
+- Never put node codes (e.g. love::C_xxx) or [bracketed codes] in the body. Refer to philosophers and concepts by name only.
+- Do not invent philosophers or claims absent from the retrieval results. If the evidence is weak, say so.
+- Do not write a references/citation list — the system appends one below the body.
 """
 
 _CITE_RE = re.compile(r"\[([^\]\s]+::[^\]\s]+)\]")  # [love::P_velleman] 형태
@@ -79,31 +108,36 @@ class PhiloRAG:
         claims = _timed(
             "decompose",
             lambda: decompose(query, use_llm=self.use_llm_split) if split else [query],
-            lambda c: "  |  ".join(c) or "(분해 없음)")
+            lambda c: "  |  ".join(c) or t("(분해 없음)", "(no decomposition)"))
         bundles = _timed(
             "retrieve",
             lambda: self.retriever.retrieve_many(claims),
-            lambda bs: f"회수 노드 {sum(len(b.neighbors) + len(b.expanded_nodes) for b in bs)}개"
-                       f" / 명제 {len(bs)}건")
+            lambda bs: t(f"회수 노드 {sum(len(b.neighbors) + len(b.expanded_nodes) for b in bs)}개"
+                         f" / 명제 {len(bs)}건",
+                         f"{sum(len(b.neighbors) + len(b.expanded_nodes) for b in bs)} nodes"
+                         f" retrieved / {len(bs)} propositions"))
         top_phil = _timed(
             "rank_philosophers",
             lambda: self.retriever.rank_philosophers(bundles, top_k=top_k),
-            lambda ps: ", ".join(f"{p.label}({p.score})" for p in ps[:5]) or "(없음)")
+            lambda ps: ", ".join(f"{p.label}({p.score})" for p in ps[:5])
+                       or t("(없음)", "(none)"))
         vscores = _timed(
             "value_profile",
             lambda: schwartz.score_values(bundles, graph=self.retriever.graph),
             lambda vs: " · ".join(f"{n} +{s}" for n, _q, s in schwartz.top_values(vs))
-                       or "(가치 표명 없음)")
+                       or t("(가치 표명 없음)", "(no value expression)"))
         diag = _timed(
             "build_diagnosis",
             lambda: build_diagnosis(query, claims, bundles, top_phil, value_scores=vscores),
-            lambda d: f"유사주장 {len(d.similar_claims)}건 · 대비 {len(d.contrasting_claims)}건")
+            lambda d: t(f"유사주장 {len(d.similar_claims)}건 · 대비 {len(d.contrasting_claims)}건",
+                        f"{len(d.similar_claims)} similar · {len(d.contrasting_claims)} contrasting"))
         return DiagnosisRun(diagnosis=diag, steps=steps)
 
     # -- LLM 진단문 ----------------------------------------------------------
     def build_prompt(self, diag: Diagnosis) -> str:
-        """narrator(단일 프롬프트 계약)용 — system+회수 리포트 결합."""
-        return f"{DIAGNOSIS_SYSTEM_PROMPT}\n\n[회수 결과]\n{format_diagnosis(diag)}"
+        """narrator(단일 프롬프트 계약)용 — system+회수 리포트 결합. 언어는 호출 시점."""
+        system = DIAGNOSIS_SYSTEM_PROMPT_EN if is_en() else DIAGNOSIS_SYSTEM_PROMPT
+        return f"{system}\n\n{t('[회수 결과]', '[Retrieval results]')}\n{format_diagnosis(diag)}"
 
     def answer(self, query: str, *, split: bool = True, top_k: int = 10) -> RagAnswer:
         """비스트리밍 진단문 생성(스트리밍은 서비스 층에서 narrator.stream_openrouter)."""

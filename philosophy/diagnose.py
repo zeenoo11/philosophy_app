@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from engine.i18n import t
 from philosophy import values as schwartz
 from philosophy.schema import Diagnosis, PhilosopherMatch, RetrievalBundle, RetrievedNode
 
@@ -51,30 +52,38 @@ def build_diagnosis(
 
 def format_diagnosis(d: Diagnosis) -> str:
     # 전개 순서: 유사한 주장 → 가까운 철학자 → (학파) → 대비되는 입장.
-    L = ["# 가치관 진단", f"\n질의: {d.query}"]
+    L = ["# " + t("가치관 진단", "Values Diagnosis"),
+         "\n" + t("질의", "Query") + f": {d.query}"]
     if d.sub_claims:
-        L.append("분해된 명제: " + "  |  ".join(d.sub_claims))
+        L.append(t("분해된 명제", "Decomposed propositions") + ": "
+                 + "  |  ".join(d.sub_claims))
 
-    L.append(f"\n## 유사한 주장 (회수 top {len(d.similar_claims)})")
+    L.append("\n## " + t(f"유사한 주장 (회수 top {len(d.similar_claims)})",
+                         f"Similar Claims (top {len(d.similar_claims)} retrieved)"))
     for i, n in enumerate(d.similar_claims, 1):
         quote = f'  ·  "{n.source_quote}"' if n.source_quote else ""
-        L.append(f"{i}. **{n.label}**  ·  유사도 **{(n.score or 0):.2f}**  ·  `{n.id}`{quote}")
+        L.append(f"{i}. **{n.label}**  ·  " + t("유사도", "similarity")
+                 + f" **{(n.score or 0):.2f}**  ·  `{n.id}`{quote}")
 
-    L.append(f"\n## 가장 가까운 철학자 (top {len(d.top_philosophers)})")
+    L.append("\n## " + t(f"가장 가까운 철학자 (top {len(d.top_philosophers)})",
+                         f"Closest Philosophers (top {len(d.top_philosophers)})"))
     for i, p in enumerate(d.top_philosophers, 1):
         arts = f"  ·  {', '.join(p.articles[:3])}" if p.articles else ""
-        L.append(f"{i}. **{p.label}**  ·  점수 **{p.score}**  ·  유사주장 {p.n_support}건{arts}")
+        L.append(f"{i}. **{p.label}**  ·  " + t("점수", "score") + f" **{p.score}**  ·  "
+                 + t(f"유사주장 {p.n_support}건", f"{p.n_support} similar claims") + arts)
         for c in p.support_claims:
             L.append(f"   - {c}")
 
     if d.predicted_community >= 0:
-        L.append(f"\n## 추정 학파 c{d.predicted_community} — 대표 사상")
+        L.append("\n## " + t(f"추정 학파 c{d.predicted_community} — 대표 사상",
+                             f"Predicted School c{d.predicted_community} — Representative Ideas"))
         for i, c in enumerate(d.school_concepts, 1):
             quote = f'  ·  "{c.source_quote}"' if c.source_quote else ""
             L.append(f"{i}. **{c.label}**  ·  `{c.id}`{quote}")
 
     if d.contrasting_claims:
-        L.append("\n## 당신과 대비되는 입장 (opposes)")
+        L.append("\n## " + t("당신과 대비되는 입장 (opposes)",
+                             "Positions Contrasting Yours (opposes)"))
         for i, n in enumerate(d.contrasting_claims, 1):
             L.append(f"{i}. **{n.label}**  ·  `{n.id}`")
 

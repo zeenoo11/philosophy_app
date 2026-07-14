@@ -1,32 +1,47 @@
 # 哲命 — 철학×사주 플랫폼 docker compose
-# 사용:  docker compose up --build   (.env 에 OPENROUTER_API_KEY)
-#        → http://localhost:8123        랜딩
-#        → http://localhost:8123/chat   채팅(프로필: 사주/철학)
+#
+# 로컬:      docker compose up --build        (.env 의 값이 ${...} 치환에 자동 사용됨)
+# Portainer: Stacks → Add stack → Repository 로 이 파일을 지정 (GitOps 자동 배포).
+#            시크릿은 .env 파일 대신 스택의 Environment variables 로 주입한다.
+#            → 자세한 절차: docs/DEPLOY-PORTAINER.md
+#
+#   → http://<host>:8123/       랜딩(KO/EN 토글)
+#   → http://<host>:8123/app    셸 안의 채팅
+#   → http://<host>:8123/me     개인 보고서 (CHAINLIT_AUTH_SECRET 설정 시)
 services:
   platform:
     build:
       context: .
-      # sxtwl 휠은 amd64만 제공 — Apple Silicon 등에서는 에뮬레이션 필요
+      # sxtwl 휠은 amd64만 제공 — ARM 호스트(Apple Silicon 등)는 에뮬레이션 필요
       platforms:
         - "linux/amd64"
     image: philo-saju
     ports:
-      - "8123:8123"
-    # LLM 인증/설정은 .env 에서 주입 (이미지에는 시크릿을 굽지 않음)
-    #   OPENROUTER_API_KEY=sk-or-...   → OpenRouter 백엔드 자동(권장: 빠름·저렴·한도설정 가능)
-    #   (없으면 결정론 기능(차트·매칭)만 동작, LLM 리포트/철학 대화는 실패 안내)
-    env_file:
-      - .env
+      - "${PLATFORM_PORT:-8123}:8123"
+    # 시크릿/설정은 환경변수로 주입(이미지에 굽지 않음).
+    #   로컬: 프로젝트 루트 .env 를 compose 가 자동으로 ${...} 치환에 사용
+    #   Portainer: 스택 Environment variables 가 같은 자리에 들어간다
+    #   OPENROUTER_API_KEY 비어 있으면 → 결정론 기능(차트·매칭)만 동작, LLM 리포트는 실패 안내
+    #   CHAINLIT_AUTH_SECRET 비어 있으면 → 익명 모드(계정별 저장·/me·통합 리포트 비활성)
     environment:
-      # 모델 기본값: OpenRouter면 deepseek/deepseek-v4-flash, claude면 sonnet (백엔드별 자동).
-      #   바꾸려면 .env 에 SAJU_LLM_MODEL=... 추가.
-      # claude 백엔드를 쓰려면 .env 에 ANTHROPIC_API_KEY + SAJU_LLM_BACKEND=claude
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:-}
       SAJU_TRACE: ${SAJU_TRACE:-0}
       SAJU_DB_PATH: /app/data/saju.db
+      # 선택 오버라이드 — 쓸 때만 주석 해제(빈 문자열로 두면 안 됨: 모델명 ""가 되어 API 오류)
+      #   SAJU_LLM_MODEL: ${SAJU_LLM_MODEL}       # 기본 deepseek/deepseek-v4-flash
+      #   SAJU_LLM_BACKEND: ${SAJU_LLM_BACKEND}   # openrouter | claude (기본: 키로 자동)
+      #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY} # claude 백엔드용
     volumes:
-      # 사용자 DB(계정·사주 프로필·철학 좌표) 영속화 — 컨테이너 재생성에도 유지
+      # 사용자 DB(계정·사주 프로필·철학 좌표·리포트 기록) 영속화 — 재배포에도 유지
       - platform-db:/app/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8123/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
 volumes:
   platform-db:

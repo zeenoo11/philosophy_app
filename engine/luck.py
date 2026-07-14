@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from engine import constants as C
+from engine.i18n import t
 from engine.pillars import day_gz60
 from engine.provenance import Trace
 
@@ -35,6 +36,12 @@ _SOLAR_MONTH_APPROX = {
     11: "11월",        # 亥
     0: "12월",         # 子
     1: "1월(익년)",    # 丑
+}
+# 위 근사 라벨의 영어 표기 (표시값 전용 — 선택은 런타임 t() 로)
+_SOLAR_MONTH_APPROX_EN = {
+    2: "February", 3: "March", 4: "April", 5: "May", 6: "June", 7: "July",
+    8: "August", 9: "September", 10: "October", 11: "November",
+    0: "December", 1: "January (next year)",
 }
 
 
@@ -103,7 +110,8 @@ def month_luck(chart, year: int) -> list[dict]:
             "gz60": gz,
             "천간십신": C.sipsin(dm, stem),
             "지지십신": C.sipsin(dm, jg),
-            "양력월_근사": _SOLAR_MONTH_APPROX[branch],
+            "양력월_근사": t(_SOLAR_MONTH_APPROX[branch],
+                        _SOLAR_MONTH_APPROX_EN[branch]),
         })
     return out
 
