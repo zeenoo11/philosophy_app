@@ -610,11 +610,14 @@ async def start():
         if prof:
             if prof["gender"]:
                 cl.user_session.set("gender", prof["gender"])
+            # 🌐 버튼을 여기에도 — 저장 프로필 경로가 이 버튼을 빼먹으면 셸(app.html)의
+            # 언어 자동 적용(버튼 자동 클릭)이 통째로 건너뛰어진다.
             await _send(t(f"👋 다시 오셨어요, **{user}**님! 저장해둔 사주를 불러왔어요. "
                           "*(모든 리포트는 자동 저장 — [📖 내 기록 (/me)](/me) 에서 다시 볼 수 있어요)*",
                           f"👋 Welcome back, **{user}**! I loaded your saved chart. "
                           "*(Every report is saved — revisit them at "
-                          "[📖 My records (/me)](/me?lang=en).)*"))
+                          "[📖 My records (/me)](/me?lang=en).)*"),
+                        actions=[_lang_action()])
             await _show_for_birth(prof["birth"])
             return
         await _send(t(f"👋 **{user}**님 환영해요! 생년월일시를 알려주시면 저장해둘게요.\n\n",

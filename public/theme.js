@@ -47,3 +47,58 @@ if (window.self !== window.top) {
   obs.observe(document.documentElement, { childList: true, subtree: true });
   if (looksLikeLogin()) fixLogin(document);
 })();
+
+// ③ 메시지 복사 버튼 — 이 Chainlit 조합엔 메시지 복사 UI가 렌더되지 않아 직접 단다.
+//    assistant 메시지(.ai-message)에 hover 시 나타나는 복사 버튼(멱등, 스트리밍에도 안전 —
+//    클릭 시점의 텍스트를 복사). 리포트를 통째로 메모장 등에 옮길 때 사용.
+(function () {
+  const style = document.createElement("style");
+  style.textContent =
+    ".ai-message{position:relative}" +
+    ".cm-copy{position:absolute;top:-2px;right:0;border:1px solid var(--line,#2a3145);" +
+    "background:var(--ink-soft,#1d2333);color:inherit;border-radius:6px;font-size:12.5px;" +
+    "line-height:1;padding:5px 7px;cursor:pointer;opacity:0;transition:opacity .15s;z-index:5}" +
+    ".ai-message:hover .cm-copy{opacity:.85}" +
+    ".cm-copy:hover{opacity:1 !important}";
+  document.head.appendChild(style);
+
+  function textOf(mc) {
+    const clone = mc.cloneNode(true);
+    clone.querySelectorAll(".cm-copy").forEach((n) => n.remove());
+    return clone.innerText.trim();
+  }
+
+  function addButtons() {
+    document.querySelectorAll(".ai-message").forEach((msg) => {
+      if (msg.querySelector(":scope > .cm-copy")) return;
+      const mc = msg.querySelector(".message-content");
+      if (!mc || !mc.innerText.trim()) return; // 빈 스트리밍 자리표시엔 아직 안 붙임
+      const btn = document.createElement("button");
+      btn.className = "cm-copy";
+      btn.type = "button";
+      btn.title = "복사 · Copy";
+      btn.textContent = "📋";
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const text = textOf(mc);
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (err) { // 비보안 컨텍스트 폴백
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        btn.textContent = "✅";
+        setTimeout(() => { btn.textContent = "📋"; }, 1200);
+      });
+      msg.appendChild(btn);
+    });
+  }
+
+  const obs = new MutationObserver(addButtons);
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+  addButtons();
+})();

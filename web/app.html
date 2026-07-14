@@ -158,22 +158,23 @@
     if (SERVICE) document.getElementById("tab-" + SERVICE)?.classList.add("active");
   }
 
-  // ── 저장된 언어(EN)를 채팅에 자동 적용 — 웰컴의 '🌐 English' 액션 버튼을 대신 눌러준다.
-  //    (KO 는 채팅 기본값이라 클릭 불필요. 프로필 자동 전환 뒤에 실행해야 새 웰컴에 적용된다.)
-  async function applyChatLang() {
-    let want = null;
-    try { want = localStorage.getItem("cm.lang"); } catch (e) {}
-    if (want !== "en") return;
+  // ── 언어를 채팅에 적용 — 웰컴의 '🌐 English/한국어' 액션 버튼을 대신 눌러준다.
+  //    로드 시: 저장된 언어가 en 이면 자동 적용(KO 는 채팅 기본값).
+  //    셸 KO·EN 토글 시: 이미 열린 채팅에도 즉시 반영(반대 언어 버튼 클릭 → 안내 재전송).
+  async function clickChatLang(want, timeout) {
+    const label = want === "en" ? "🌐 English" : "🌐 한국어";
     const btn = await waitFor(() => {
       const d = frame.contentDocument;
       if (!d) return null;
-      return [...d.querySelectorAll("button")].find(b => b.textContent.includes("🌐 English"));
-    }, 45000, 400);
-    if (btn) btn.click();
+      return [...d.querySelectorAll("button")].find(b => b.textContent.includes(label));
+    }, timeout, 400);
+    if (btn) btn.click();   // 반대 언어 상태일 때만 존재 — 이미 그 언어면 조용히 무시
   }
   frame.addEventListener("load", async () => {
     if (TARGET) await switchProfile(TARGET);
-    applyChatLang();
+    let want = null;
+    try { want = localStorage.getItem("cm.lang"); } catch (e) {}
+    if (want === "en") clickChatLang("en", 45000);
   }, { once: true });
 
   // ── KO/EN 토글 — 랜딩과 같은 localStorage("cm.lang") 공유. 셸 UI 만 즉시 전환되고,
@@ -208,8 +209,11 @@
   let savedLang = null;
   try { savedLang = localStorage.getItem("cm.lang"); } catch (e) {}
   applyLang(qsLang === "en" ? "en" : qsLang === "ko" ? "ko" : (savedLang || "ko"));
-  document.getElementById("langBtn").addEventListener("click", () =>
-    applyLang(document.documentElement.lang === "en" ? "ko" : "en"));
+  document.getElementById("langBtn").addEventListener("click", () => {
+    const next = document.documentElement.lang === "en" ? "ko" : "en";
+    applyLang(next);
+    clickChatLang(next, 3000);  // 이미 열린 채팅에도 즉시 반영(🌐 버튼 대신 클릭)
+  });
 </script>
 </body>
 </html>
