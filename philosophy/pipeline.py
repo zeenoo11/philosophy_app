@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 from engine.i18n import is_en, t
 from philosophy import values as schwartz
-from philosophy.decompose import decompose
+from philosophy.decompose import Decomposition, decompose_full
 from philosophy.diagnose import build_diagnosis, format_diagnosis
 from philosophy.retriever import LiteRetriever
 from philosophy.schema import Diagnosis, RagAnswer
@@ -29,6 +29,12 @@ DIAGNOSIS_SYSTEM_PROMPT = """당신은 사용자의 가치관·생각을 철학 
 ## 가까운 철학자
 유사 주장의 실제 저자를 중심으로 가까운 철학자 1~3명을 짚고, 각자의 입장이 사용자 생각과
 어떻게 연결되는지 설명한다.
+
+## 🕸 생각의 경로
+회수 결과에 '생각의 경로(Path of Thought)'가 있으면, 그 관계 체인(누가 무엇을 주장(asserts)하고
+무엇에 반대(opposes)하는지)을 근거로 사용자의 생각이 어떤 사상·주장들과 어떻게 이어지는지를
+이야기처럼 풀어 설명한다. 화살표의 방향이 뜻하는 바를 자연스러운 문장으로 옮기되, 코드가 아니라
+철학자·개념의 이름으로만 지칭한다. '생각의 경로'가 회수 결과에 없으면 이 섹션은 통째로 생략한다.
 
 ## 당신과 유사한 사상
 위 내용을 종합해 사용자의 가치관을 한 문단으로 해석한다 — 어떤 철학적 입장에 서 있고,
@@ -58,6 +64,13 @@ and where each one resonates with the user's thinking.
 ## Closest Philosophers
 Focusing on the actual authors of the similar claims, pick the 1-3 closest philosophers and explain
 how each one's position connects with the user's idea.
+
+## 🕸 Path of Thought
+If the retrieval results include a 'Path of Thought', use those relation chains (who asserts what,
+who opposes what) to narrate, like a story, how the user's idea connects to those ideas and claims.
+Translate what the arrow directions mean into natural prose, referring to philosophers and concepts
+by name only (never node codes). If no 'Path of Thought' appears in the retrieval results, omit this
+section entirely.
 
 ## Where You Stand
 Synthesize the above into one paragraph interpreting the user's values — which philosophical position
@@ -105,10 +118,19 @@ class PhiloRAG:
             steps.append(StepRecord(name, (time.perf_counter() - t0) * 1000, summarize(out)))
             return out
 
-        claims = _timed(
+        dc: Decomposition = _timed(
             "decompose",
-            lambda: decompose(query, use_llm=self.use_llm_split) if split else [query],
-            lambda c: "  |  ".join(c) or t("(분해 없음)", "(no decomposition)"))
+            lambda: decompose_full(query, use_llm=self.use_llm_split) if split
+                    else Decomposition(claims=[query]),
+            lambda d: ("  |  ".join(d.claims) or t("(분해 없음)", "(no decomposition)"))
+                      + (t(f"  · 엔티티: {', '.join(d.entities)}",
+                           f"  · entities: {', '.join(d.entities)}") if d.entities else ""))
+        claims, entities = dc.claims, dc.entities
+        anchors = _timed(
+            "entity_link",
+            lambda: self.retriever.link_entities(entities),
+            lambda a: t(f"앵커 {len(a)}개", f"{len(a)} anchors")
+                      + (": " + ", ".join(self._anchor_labels(a)) if a else ""))
         bundles = _timed(
             "retrieve",
             lambda: self.retriever.retrieve_many(claims),
@@ -116,9 +138,13 @@ class PhiloRAG:
                          f" / 명제 {len(bs)}건",
                          f"{sum(len(b.neighbors) + len(b.expanded_nodes) for b in bs)} nodes"
                          f" retrieved / {len(bs)} propositions"))
+        paths = _timed(
+            "pathfind",
+            lambda: self.retriever.find_paths(anchors, bundles),
+            lambda ps: t(f"생각의 경로 {len(ps)}개", f"{len(ps)} paths of thought"))
         top_phil = _timed(
             "rank_philosophers",
-            lambda: self.retriever.rank_philosophers(bundles, top_k=top_k),
+            lambda: self.retriever.rank_philosophers(bundles, top_k=top_k, paths=paths),
             lambda ps: ", ".join(f"{p.label}({p.score})" for p in ps[:5])
                        or t("(없음)", "(none)"))
         vscores = _timed(
@@ -128,10 +154,26 @@ class PhiloRAG:
                        or t("(가치 표명 없음)", "(no value expression)"))
         diag = _timed(
             "build_diagnosis",
-            lambda: build_diagnosis(query, claims, bundles, top_phil, value_scores=vscores),
-            lambda d: t(f"유사주장 {len(d.similar_claims)}건 · 대비 {len(d.contrasting_claims)}건",
-                        f"{len(d.similar_claims)} similar · {len(d.contrasting_claims)} contrasting"))
+            lambda: build_diagnosis(query, claims, bundles, top_phil, value_scores=vscores,
+                                    paths=paths, anchors=anchors),
+            lambda d: t(f"유사주장 {len(d.similar_claims)}건 · 대비 {len(d.contrasting_claims)}건"
+                        f" · 경로 {len(d.paths)}개",
+                        f"{len(d.similar_claims)} similar · {len(d.contrasting_claims)} contrasting"
+                        f" · {len(d.paths)} paths"))
         return DiagnosisRun(diagnosis=diag, steps=steps)
+
+    def _anchor_labels(self, ids: list[str], *, k: int = 3) -> list[str]:
+        """앵커 노드 id → 표시 라벨(중복 제거, 상위 k) — Step 요약용."""
+        out, seen = [], set()
+        for nid in ids:
+            n = self.retriever.graph.node(nid) or {}
+            label = n.get("label", nid)
+            if label not in seen:
+                seen.add(label)
+                out.append(label)
+            if len(out) >= k:
+                break
+        return out
 
     # -- LLM 진단문 ----------------------------------------------------------
     def build_prompt(self, diag: Diagnosis) -> str:

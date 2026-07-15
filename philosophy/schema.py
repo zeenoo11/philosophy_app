@@ -45,6 +45,20 @@ class RetrievalBundle:
 
 
 @dataclass
+class GraphPath:
+    """그래프 위 '생각의 경로' — 앵커/시드 사이 최단 관계 체인 (경로 추론).
+
+    nodes[i] 와 nodes[i+1] 을 rels[i] = (relation, forward) 가 잇는다. forward=True 면
+    원 간선이 nodes[i]→nodes[i+1](정방향), False 면 반대. 렌더러가 방향으로 화살표를
+    그린다 ('A —asserts→ X ←asserts— B'). score = 평균 관계가중 × 길이 감쇠.
+    """
+
+    nodes: list[str] = field(default_factory=list)          # 노드 id 열
+    rels: list[tuple[str, bool]] = field(default_factory=list)  # 간선 (relation, forward)
+    score: float = 0.0
+
+
+@dataclass
 class PhilosopherMatch:
     """사용자 생각과 유사한 철학자 + 근거. canonical 단위로 집계(같은 인물 통합)."""
 
@@ -70,6 +84,8 @@ class Diagnosis:
     similar_claims: list[RetrievedNode] = field(default_factory=list)
     contrasting_claims: list[RetrievedNode] = field(default_factory=list)
     value_scores: dict = field(default_factory=dict)  # Schwartz 10차원 raw (values.py)
+    paths: list[GraphPath] = field(default_factory=list)  # 생각의 경로(경로 추론)
+    anchors: list[str] = field(default_factory=list)  # 링킹된 앵커 노드 id(언급 엔티티)
 
 
 @dataclass

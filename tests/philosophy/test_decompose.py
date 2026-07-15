@@ -1,7 +1,9 @@
 """명제 분해 — 규칙 폴백 경로 (LLM 미호출)."""
 import pytest
 
-from philosophy.decompose import _decompose_rule, _strip_fences, decompose
+from philosophy.decompose import (
+    Decomposition, _decompose_rule, _strip_fences, decompose, decompose_full,
+)
 
 pytestmark = pytest.mark.philosophy
 
@@ -30,3 +32,22 @@ def test_decompose_empty_and_fallback():
 def test_strip_fences():
     assert _strip_fences('```json\n["a"]\n```') == '["a"]'
     assert _strip_fences('["a"]') == '["a"]'
+
+
+def test_decompose_full_rule_fallback_has_no_entities():
+    """규칙 폴백은 명제만 — 엔티티는 조용히 빈 목록(번역/추출 불가)."""
+    d = decompose_full("사랑은 삶을 풍요롭게 한다 하지만 결핍과 고통도 준다", use_llm=False)
+    assert isinstance(d, Decomposition)
+    assert len(d.claims) == 2 and d.entities == []
+
+
+def test_decompose_full_empty():
+    d = decompose_full("", use_llm=False)
+    assert d.claims == [] and d.entities == []
+
+
+def test_decompose_backward_compat_returns_claim_list():
+    """decompose() 는 여전히 list[str] — decompose_full().claims 와 동일."""
+    text = "Freedom matters most"
+    assert decompose(text, use_llm=False) == decompose_full(text, use_llm=False).claims
+    assert decompose(text, use_llm=False) == ["Freedom matters most"]
