@@ -41,6 +41,11 @@ _BASE_RULES = (
     "- **분량을 넉넉히.** 각 섹션 제목을 그대로 쓰고 **섹션당 5~8문장**으로 충실하게(짧게 "
     "끊지 마세요). 각 섹션 끝에 바로 쓸 수 있는 **실천 조언 1~2가지**(구체적 행동)를 덧붙이세요. "
     "전체적으로 풍부하고 읽는 맛이 있게, 그러나 같은 말 반복은 피하고 섹션마다 다른 근거로.\n"
+    "- **읽기 쉽게 쪼개세요.** 섹션 하나를 통짜 문단으로 쓰지 말고 **2~3개의 짧은 문단**으로 "
+    "나누고, 각 문단 첫 줄에 그 문단의 핵심을 담은 **굵은 미니 소제목** 한 줄을 따로 "
+    "붙이세요(예: **타고난 그릇**, **올해의 물길**, **이렇게 해보세요**). 미니 소제목은 "
+    "굵은 글씨 한 줄만 — '#' 헤딩은 섹션 제목에만 씁니다. 실천 조언도 소제목을 단 "
+    "마지막 문단으로.\n"
 )
 
 # 영어 리포트 작성 규칙 — 한글/한자 완전 금지 + 로마자 간지 + 동일한 그라운딩 요구
@@ -69,6 +74,11 @@ _BASE_RULES_EN = (
     "- **Be generous with length.** Keep the section headers exactly as given and write 5-8 full "
     "sentences per section, ending each section with 1-2 practical tips (specific actions). "
     "Rich and readable overall, but do not repeat yourself — cite different evidence per section.\n"
+    "- **Break it up for the eye.** Never write a section as one solid block: split it into "
+    "2-3 short paragraphs, each opened by its own **bold mini-heading** line that captures "
+    "that paragraph's point (e.g. **Your Innate Vessel**, **This Year's Current**, "
+    "**Try This**). Mini-headings are a single bold line — never '#' headings, which are "
+    "reserved for section titles. Make the practical tips the final mini-headed paragraph.\n"
 )
 
 
